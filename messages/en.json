@@ -1,0 +1,19 @@
+{
+  "Navigation": {
+    "women": "Women",
+    "men": "Men",
+    "sale": "Sale",
+    "about": "About us",
+    "contacts": "Contacts"
+  },
+  "Hero": {
+    "title": "Live in the moment",
+    "subtitle": "Silver jewelry inspired by the island of Bali",
+    "shopNow": "SHOP NOW"
+  },
+  "Products": {
+    "newArrivals": "NEW ARRIVALS",
+    "bestsellers": "BESTSELLERS",
+    "shopAll": "SHOP ALL"
+  }
+}

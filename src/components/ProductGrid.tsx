@@ -1,15 +1,16 @@
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { Heart } from 'lucide-react';
 
 const products = [
-  { id: 1, name: "Heart ring", price: "$80", bg: "bg-[#e5e0d8]" },
-  { id: 2, name: "Bali Buddha Pendant", price: "$40", bg: "bg-[#f0ebe1]" },
-  { id: 3, name: "Mari Bracelet", price: "$70", bg: "bg-[#e8e4db]" },
-  { id: 4, name: "Starfish earrings", price: "$35", bg: "bg-[#f5f1e8]" }
+  { id: 1, nameKey: "heartRing", price: 80, bg: "bg-[#e5e0d8]" },
+  { id: 2, nameKey: "baliBuddhaPendant", price: 40, bg: "bg-[#f0ebe1]" },
+  { id: 3, nameKey: "mariBracelet", price: 70, bg: "bg-[#e8e4db]" },
+  { id: 4, nameKey: "starfishEarrings", price: 35, bg: "bg-[#f5f1e8]" }
 ];
 
 export default function ProductGrid() {
   const t = useTranslations('Products');
+  const format = useFormatter();
 
   return (
     <section className="w-full max-w-7xl mx-auto px-8 py-24">
@@ -33,13 +34,13 @@ export default function ProductGrid() {
               <div className="text-[#2C2A28]/30 font-serif text-2xl group-hover:scale-105 transition-transform duration-700">
                 Aura
               </div>
-              <button className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/50 p-2 rounded-full hover:bg-white">
+              <button aria-label={t('addToFavorites', {product: t(product.nameKey)})} className="absolute top-4 right-4 rtl:right-auto rtl:left-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/50 p-2 rounded-full hover:bg-white">
                 <Heart size={16} className="text-[#2C2A28]" />
               </button>
             </div>
             <div className="flex justify-between items-center text-sm font-sans">
-              <h3 className="text-[#2C2A28]">{product.name}</h3>
-              <span className="text-[#2C2A28]/70">{product.price}</span>
+              <h3 className="text-[#2C2A28]">{t(product.nameKey)}</h3>
+              <span className="text-[#2C2A28]/70">{format.number(product.price, {style: 'currency', currency: 'USD', maximumFractionDigits: 0})}</span>
             </div>
           </div>
         ))}

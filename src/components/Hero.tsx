@@ -10,7 +10,7 @@ export default function Hero() {
       <div className="w-1/2 h-full relative overflow-hidden">
         <Image 
           src="/hero1.png" 
-          alt="Woman wearing silver jewelry" 
+          alt={t('leftImageAlt')}
           fill 
           className="object-cover object-center"
           priority
@@ -19,7 +19,7 @@ export default function Hero() {
       <div className="w-1/2 h-full relative overflow-hidden">
         <Image 
           src="/hero2.png" 
-          alt="Close up of hands with silver rings" 
+          alt={t('rightImageAlt')}
           fill 
           className="object-cover object-center"
           priority

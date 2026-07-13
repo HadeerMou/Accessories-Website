@@ -1,13 +1,17 @@
 import HelpLayout from '@/components/HelpLayout';
+import { useTranslations } from 'next-intl';
 
 export default function ShippingPage() {
+  const t = useTranslations('Shipping');
+  const help = useTranslations('Help');
+
   return (
-    <HelpLayout title="Shipping">
-      <p>We offer global shipping to ensure our pieces reach you wherever you are.</p>
-      <h3 className="font-serif text-2xl text-[#2C2A28] mt-8 mb-4">Domestic Shipping</h3>
-      <p>Standard domestic shipping takes 3-5 business days. Express options are available at checkout.</p>
-      <h3 className="font-serif text-2xl text-[#2C2A28] mt-8 mb-4">International Shipping</h3>
-      <p>International orders usually take 7-14 business days. Please note that customs duties and taxes are the responsibility of the recipient.</p>
+    <HelpLayout title={help('shippingTitle')}>
+      <p>{t('intro')}</p>
+      <h3 className="font-serif text-2xl text-[#2C2A28] mt-8 mb-4">{t('domesticTitle')}</h3>
+      <p>{t('domesticText')}</p>
+      <h3 className="font-serif text-2xl text-[#2C2A28] mt-8 mb-4">{t('internationalTitle')}</h3>
+      <p>{t('internationalText')}</p>
     </HelpLayout>
   );
 }

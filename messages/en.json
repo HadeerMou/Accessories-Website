@@ -1,19 +1,133 @@
 {
+  "Metadata": {
+    "title": "Aura Accessories",
+    "description": "Premium silver jewelry inspired by the island of Bali."
+  },
   "Navigation": {
     "women": "Women",
     "men": "Men",
     "sale": "Sale",
     "about": "About us",
-    "contacts": "Contacts"
+    "contacts": "Contacts",
+    "favorites": "Favorites",
+    "cart": "Cart"
   },
   "Hero": {
     "title": "Live in the moment",
     "subtitle": "Silver jewelry inspired by the island of Bali",
-    "shopNow": "SHOP NOW"
+    "shopNow": "SHOP NOW",
+    "leftImageAlt": "Woman wearing silver jewelry",
+    "rightImageAlt": "Close-up of hands wearing silver rings"
   },
   "Products": {
     "newArrivals": "NEW ARRIVALS",
     "bestsellers": "BESTSELLERS",
-    "shopAll": "SHOP ALL"
+    "shopAll": "SHOP ALL",
+    "addToFavorites": "Add {product} to favorites",
+    "heartRing": "Heart ring",
+    "baliBuddhaPendant": "Bali Buddha pendant",
+    "mariBracelet": "Mari bracelet",
+    "starfishEarrings": "Starfish earrings"
+  },
+  "Home": {
+    "decorativeText": "Silver jewelry inspired by the island",
+    "rings": "Rings",
+    "ringsAlt": "Rings category",
+    "necklaces": "Necklaces",
+    "necklacesAlt": "Necklaces category",
+    "storyTitle": "Creating, Crafting & Wearing.",
+    "storyText": "Our core is craftsmanship and daily conversation with our tools. We thrive on teamwork and the pursuit of excellence, while maintaining the freedom to decide when and how to launch collections, guided always by intuition and our own evolution."
+  },
+  "Footer": {
+    "description": "Our core is craftsmanship and daily conversation with our tools. We thrive on teamwork and the pursuit of excellence, while maintaining the freedom to decide when and how to launch collections.",
+    "newsletter": "Newsletter",
+    "email": "Email",
+    "send": "Send",
+    "shop": "Shop",
+    "help": "Help",
+    "shipping": "Shipping",
+    "returns": "Returns & Exchanges",
+    "sizeGuide": "Size Guide",
+    "productCare": "Product Care",
+    "contactUs": "Contact Us",
+    "copyright": "© 2026 Aura Accessories.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  },
+  "Catalog": {
+    "womenTitle": "Women's Collection",
+    "womenCategory": "Women's",
+    "menTitle": "Men's Collection",
+    "menCategory": "Men's",
+    "saleTitle": "Sale",
+    "saleCategory": "Sale",
+    "item": "{category} item {number}",
+    "all": "All",
+    "rings": "Rings",
+    "necklaces": "Necklaces",
+    "bracelets": "Bracelets",
+    "earrings": "Earrings",
+    "addToFavorites": "Add {product} to favorites"
+  },
+  "Help": {
+    "center": "Help Center",
+    "shippingTitle": "Shipping",
+    "returnsTitle": "Returns & Exchanges",
+    "sizeGuideTitle": "Size Guide",
+    "productCareTitle": "Product Care"
+  },
+  "Shipping": {
+    "intro": "We offer global shipping to ensure our pieces reach you wherever you are.",
+    "domesticTitle": "Domestic Shipping",
+    "domesticText": "Standard domestic shipping takes 3–5 business days. Express options are available at checkout.",
+    "internationalTitle": "International Shipping",
+    "internationalText": "International orders usually take 7–14 business days. Please note that customs duties and taxes are the responsibility of the recipient."
+  },
+  "Returns": {
+    "intro": "We want you to love your Aura pieces. If you're not completely satisfied, we accept returns within 14 days of delivery.",
+    "conditions": "Conditions",
+    "unworn": "Items must be unworn and in their original packaging.",
+    "finalSale": "Custom or engraved pieces are final sale.",
+    "earrings": "Earrings cannot be returned for hygiene reasons."
+  },
+  "SizeGuide": {
+    "intro": "Finding the perfect fit is essential for jewelry that you'll wear every day.",
+    "ringsTitle": "Rings",
+    "ringsText": "Our rings are sized according to standard US sizes. If you are between sizes, we recommend sizing up for wider bands and sizing down for thinner bands.",
+    "necklacesTitle": "Necklaces",
+    "necklacesText": "Most of our necklaces are 18 inches with a 2-inch extender, allowing them to be worn at various lengths."
+  },
+  "ProductCare": {
+    "intro": "With the right care, your Aura pieces will stay beautiful for years to come.",
+    "jewelryTitle": "Jewelry Care",
+    "jewelryText": "Keep your jewelry dry and store it separately to prevent scratches and tarnishing. Avoid exposure to perfumes, lotions, and harsh chemicals.",
+    "cleaningTitle": "Cleaning Tips",
+    "cleaningText": "Use a soft polishing cloth for gold and silver pieces, and gently clean stones with a damp cloth when needed."
+  },
+  "About": {
+    "title": "About Aura",
+    "intro": "Aura was born from a desire to create jewelry that speaks to the soul. Inspired by the raw beauty of Bali, we craft pieces that are more than just accessories—they are extensions of your identity.",
+    "craftsmanship": "Craftsmanship",
+    "processTitle": "Our Process",
+    "processText": "Every piece is meticulously handcrafted by local artisans. We believe in sustainable practices and ethical sourcing, ensuring that every ring, necklace, and bracelet carries positive energy from our studio to your hands."
+  },
+  "Contacts": {
+    "title": "Get in Touch",
+    "locationTitle": "Store Location",
+    "addressLine1": "123 Artisan Way",
+    "addressLine2": "Bali, Indonesia 80361",
+    "infoTitle": "Contact Info",
+    "emailLabel": "Email",
+    "phoneLabel": "Phone",
+    "name": "Name",
+    "email": "Email",
+    "message": "Message",
+    "sendMessage": "Send Message"
+  },
+  "EmptyStates": {
+    "cartTitle": "Your Cart",
+    "cartText": "Your selected pieces will appear here. Add favorites or shop the collection to start building your look.",
+    "favoritesTitle": "Your Favorites",
+    "favoritesText": "Save the pieces you love here and come back anytime to revisit your favorite styles."
   }
 }

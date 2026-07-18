@@ -10,4 +10,6 @@ export const env = {
   port,
   corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:3000",
   databaseUrl: process.env.DATABASE_URL,
+  authSecret: process.env.AUTH_SECRET ?? "development-only-change-this-secret",
+  nodeEnv: process.env.NODE_ENV ?? "development",
 };

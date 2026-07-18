@@ -1,22 +1,10 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { LoaderCircle, Minus, Plus, Trash2 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useTranslations } from 'next-intl';
+import { API_URL, customerToken } from '@/lib/api';
 
-export default function CartPage() {
-  const t = useTranslations('EmptyStates');
-
-  return (
-    <main className="min-h-screen flex flex-col bg-[#FAF8F5]">
-      <Header />
-
-      <section className="w-full max-w-6xl mx-auto px-8 py-24 flex-1">
-        <h1 className="text-4xl md:text-5xl font-serif text-[#2C2A28] mb-8">{t('cartTitle')}</h1>
-        <p className="font-sans text-[#2C2A28]/70 max-w-2xl">
-          {t('cartText')}
-        </p>
-      </section>
-
-      <Footer />
-    </main>
-  );
-}
+type CartItem={id:string;quantity:number;product:{id:string;nameEn:string;price:string|number;discountPrice?:string|number|null;images:Array<{imageUrl:string}>};productVariant?:{price?:string|number|null}|null};
+export default function CartPage(){const [items,setItems]=useState<CartItem[]>([]);const [loading,setLoading]=useState(true);const [needsAuth,setNeedsAuth]=useState(false);const load=async()=>{const token=customerToken();if(!token){setNeedsAuth(true);setLoading(false);return;}try{const response=await fetch(`${API_URL}/cart`,{headers:{Authorization:`Bearer ${token}`}});if(response.status===401){setNeedsAuth(true);return;}const body=await response.json();if(response.ok)setItems(body.data.items);}finally{setLoading(false);}};useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[]);const change=async(item:CartItem,quantity:number)=>{const token=customerToken();if(!token)return;if(quantity<1){await fetch(`${API_URL}/cart/items/${item.id}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});setItems(v=>v.filter(x=>x.id!==item.id));return;}const response=await fetch(`${API_URL}/cart/items/${item.id}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({quantity})});if(response.ok)setItems(v=>v.map(x=>x.id===item.id?{...x,quantity}:x));};const total=items.reduce((sum,item)=>sum+Number(item.productVariant?.price??item.product.discountPrice??item.product.price)*item.quantity,0);return <main className="flex min-h-screen flex-col bg-[#FAF8F5]"><Header/><section className="mx-auto w-full max-w-6xl flex-1 px-8 py-20"><div className="mb-10 text-[10px] font-bold uppercase tracking-[.2em] text-[#927345]">Your selection</div><h1 className="font-serif text-5xl">Shopping bag</h1>{loading?<div className="grid min-h-72 place-items-center"><LoaderCircle className="animate-spin text-black/30"/></div>:needsAuth?<div className="mt-12 rounded-2xl border border-black/8 bg-white p-10 text-center"><h2 className="font-serif text-2xl">Sign in to see your bag</h2><p className="mt-2 text-sm text-black/45">Your saved pieces will be waiting for you.</p><button onClick={()=>window.dispatchEvent(new Event('aura-open-auth'))} className="mt-6 rounded-full bg-[#26372f] px-7 py-3 text-xs uppercase tracking-widest text-white">Sign in</button></div>:items.length===0?<div className="mt-12 border-t border-black/10 py-20 text-center"><h2 className="font-serif text-2xl text-black/45">Your bag is beautifully empty.</h2><p className="mt-2 text-xs text-black/35">Discover a piece that feels like yours.</p></div>:<div className="mt-12 grid gap-10 lg:grid-cols-[1fr_320px]"><div className="divide-y divide-black/8 border-y border-black/8">{items.map(item=>{const price=Number(item.productVariant?.price??item.product.discountPrice??item.product.price);return <div key={item.id} className="flex gap-5 py-6"><div className="size-28 shrink-0 bg-[#e8e2d8] bg-cover bg-center" style={item.product.images[0]?{backgroundImage:`url(${item.product.images[0].imageUrl})`}:{}}/><div className="flex flex-1 flex-col"><div className="flex justify-between gap-4"><h2 className="font-serif text-lg">{item.product.nameEn}</h2><span className="text-sm">{new Intl.NumberFormat('en-EG',{style:'currency',currency:'EGP',maximumFractionDigits:0}).format(price*item.quantity)}</span></div><div className="mt-auto flex items-center justify-between"><div className="flex items-center rounded-full border border-black/12"><button onClick={()=>change(item,item.quantity-1)} className="grid size-8 place-items-center"><Minus size={12}/></button><span className="w-7 text-center text-xs">{item.quantity}</span><button onClick={()=>change(item,item.quantity+1)} className="grid size-8 place-items-center"><Plus size={12}/></button></div><button onClick={()=>change(item,0)} className="text-black/35 hover:text-rose-700"><Trash2 size={16}/></button></div></div></div>})}</div><aside className="h-fit rounded-2xl bg-[#26372f] p-6 text-white"><h2 className="font-serif text-2xl">Order summary</h2><div className="mt-7 flex justify-between text-xs text-white/60"><span>Subtotal</span><span>{new Intl.NumberFormat('en-EG',{style:'currency',currency:'EGP',maximumFractionDigits:0}).format(total)}</span></div><div className="mt-4 flex justify-between text-xs text-white/60"><span>Shipping</span><span>At checkout</span></div><div className="mt-6 flex justify-between border-t border-white/15 pt-5 font-semibold"><span>Total</span><span>{new Intl.NumberFormat('en-EG',{style:'currency',currency:'EGP',maximumFractionDigits:0}).format(total)}</span></div><button className="mt-7 w-full rounded-full bg-[#d3b47b] py-3 text-xs font-bold uppercase tracking-widest text-[#26372f]">Checkout</button></aside></div>}</section><Footer/></main>}

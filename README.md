@@ -50,3 +50,11 @@ npm run lint
 npm run typecheck
 npm run build
 ```
+
+
+``` admin seed
+
+npm run seed:admin --workspace backend
+
+
+```

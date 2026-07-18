@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:safe": "npm run build && node dist/server.js",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"
+    ,"seed:admin": "npm run build && node dist/scripts/seed-admin.js"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

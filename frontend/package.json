@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next build && next start",
+    "dev:watch": "next dev",
+    "dev:safe": "npm run dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

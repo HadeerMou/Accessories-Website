@@ -6,6 +6,12 @@ if (!env.databaseUrl) {
   throw new Error("DATABASE_URL is required");
 }
 
-const adapter = new PrismaPg({ connectionString: env.databaseUrl });
+const adapter = new PrismaPg({
+  connectionString: env.databaseUrl,
+  max: 5,
+  connectionTimeoutMillis: 5_000,
+  idleTimeoutMillis: 10_000,
+  allowExitOnIdle: true,
+});
 
 export const prisma = new PrismaClient({ adapter });

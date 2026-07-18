@@ -1,0 +1,9 @@
+import { Router } from "express";
+import { PaymentProvider, PaymentStatus } from "../../generated/prisma/enums.js";
+import { HttpError } from "../../lib/http-error.js";
+import { prisma } from "../../lib/prisma.js";
+import { requireAdmin, requireAuth, type AuthRequest } from "../auth/auth.middleware.js";
+export const paymentsRouter = Router();
+paymentsRouter.get("/",requireAuth,requireAdmin,async(req,res,next)=>{try{res.json({data:await prisma.payment.findMany({include:{order:{select:{id:true,userId:true,total:true}}},orderBy:{createdAt:"desc"},take:100})});}catch(e){next(e);}});
+paymentsRouter.post("/",requireAuth,async(req,res,next)=>{try{const userId=(req as AuthRequest).auth!.sub;const order=await prisma.order.findFirst({where:{id:req.body.orderId,userId},include:{payments:true}});if(!order)throw new HttpError(404,"Order not found");if(order.paymentStatus===PaymentStatus.PAID)throw new HttpError(409,"Order is already paid");const provider=req.body.provider as PaymentProvider;if(!Object.values(PaymentProvider).includes(provider))throw new HttpError(400,"Invalid payment provider");if(provider===PaymentProvider.PAYMOB)throw new HttpError(501,"PAYMOB credentials and checkout integration are not configured");const payment=await prisma.payment.create({data:{orderId:order.id,provider,amount:order.total,currency:"EGP",status:PaymentStatus.PENDING}});res.status(201).json({data:payment});}catch(e){next(e);}});
+paymentsRouter.put("/:id/status",requireAuth,requireAdmin,async(req,res,next)=>{try{const status=req.body.status as PaymentStatus;if(!Object.values(PaymentStatus).includes(status))throw new HttpError(400,"Invalid payment status");const payment=await prisma.$transaction(async tx=>{const p=await tx.payment.update({where:{id:req.params.id as string},data:{status}});await tx.order.update({where:{id:p.orderId!},data:{paymentStatus:status,updatedAt:new Date()}});return p;});res.json({data:payment});}catch(e){next(e);}});

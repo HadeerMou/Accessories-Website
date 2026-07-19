@@ -26,3 +26,13 @@ export interface UpdateOrderInput {
   orderStatus?: OrderStatus;
   paymentStatus?: PaymentStatus;
 }
+
+export interface CheckoutInput {
+  fullName?: string;
+  phone: string;
+  country: string;
+  city: string;
+  street: string;
+  apartment?: string | null;
+  postalCode?: string | null;
+}

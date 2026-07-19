@@ -1,14 +1,15 @@
-import { OrderStatus, PaymentStatus, ProductStatus } from "../../generated/prisma/enums.js";
+import { InventoryReason, OrderStatus, PaymentProvider, PaymentStatus, ProductStatus } from "../../generated/prisma/enums.js";
 import { HttpError } from "../../lib/http-error.js";
+import { sendOrderConfirmation } from "../../lib/mailer.js";
 import { prisma } from "../../lib/prisma.js";
 import { orderInclude, OrdersRepository } from "./orders.repository.js";
-import type { CreateOrderInput, OrderFilters, UpdateOrderInput } from "./orders.types.js";
+import type { CheckoutInput, CreateOrderInput, OrderFilters, UpdateOrderInput } from "./orders.types.js";
 
 const repository = new OrdersRepository();
 
 export async function listOrders(filters: OrderFilters) {
-  const page = Number.isFinite(filters.page) && filters.page > 0 ? filters.page : 1;
-  const limit = Number.isFinite(filters.limit) && filters.limit > 0 ? Math.min(filters.limit, 50) : 10;
+  const page = Number.isFinite(filters.page) && filters.page > 0 ? Math.floor(filters.page) : 1;
+  const limit = Number.isFinite(filters.limit) && filters.limit > 0 ? Math.min(Math.floor(filters.limit), 50) : 10;
   const result = await repository.list({ ...filters, page, limit });
   return { ...result, page, limit, pages: Math.ceil(result.total / limit) };
 }
@@ -26,6 +27,8 @@ export async function createOrder(input: CreateOrderInput) {
   if (input.items.some((item) => !item.productId || !Number.isInteger(item.quantity) || item.quantity < 1)) {
     throw new HttpError(400, "Each item needs a productId and a positive integer quantity");
   }
+  const itemKeys = input.items.map((item) => `${item.productId}:${item.productVariantId ?? ""}`);
+  if (new Set(itemKeys).size !== itemKeys.length) throw new HttpError(400, "Duplicate order items must be combined into one item");
   const shipping = input.shipping ?? 0;
   const discount = input.discount ?? 0;
   if (!Number.isFinite(shipping) || shipping < 0 || !Number.isFinite(discount) || discount < 0) {
@@ -118,4 +121,47 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
     });
   }
   return repository.update(id, input);
+}
+
+export async function checkoutCart(userId: string, input: CheckoutInput) {
+  for (const field of ["phone", "country", "city", "street"] as const) {
+    if (typeof input[field] !== "string" || !input[field].trim()) throw new HttpError(400, `${field} is required`);
+  }
+
+  const order = await prisma.$transaction(async tx => {
+    const user = await tx.user.findFirst({ where: { id: userId, deletedAt: null }, select: { id: true, fullName: true, email: true } });
+    if (!user) throw new HttpError(404, "User not found");
+    const cart = await tx.cart.findFirst({ where: { userId }, include: { items: true } });
+    if (!cart?.items.length) throw new HttpError(400, "Your cart is empty");
+
+    const address = await tx.address.create({ data: { userId, country: input.country.trim(), city: input.city.trim(), street: input.street.trim(), apartment: input.apartment?.trim() || null, postalCode: input.postalCode?.trim() || null, isDefault: true } });
+    await tx.address.updateMany({ where: { userId, id: { not: address.id }, deletedAt: null }, data: { isDefault: false } });
+    await tx.user.update({ where: { id: userId }, data: { phone: input.phone.trim(), ...(input.fullName?.trim() ? { fullName: input.fullName.trim() } : {}), updatedAt: new Date() } });
+
+    let subtotal = 0;
+    const items: Array<{ productId: string; productVariantId: string | null; quantity: number; price: number }> = [];
+    for (const cartItem of cart.items) {
+      if (!cartItem.productId) throw new HttpError(409, "A cart item no longer has a product");
+      const product = await tx.product.findFirst({ where: { id: cartItem.productId, deletedAt: null, status: ProductStatus.ACTIVE }, include: { variants: cartItem.productVariantId ? { where: { id: cartItem.productVariantId } } : false } });
+      if (!product) throw new HttpError(409, "A product in your cart is no longer available");
+      const variant = cartItem.productVariantId ? product.variants[0] : undefined;
+      if (cartItem.productVariantId && !variant) throw new HttpError(409, "A selected product option is no longer available");
+      const price = Number(variant?.price ?? product.discountPrice ?? product.price);
+      const updated = variant
+        ? await tx.productVariant.updateMany({ where: { id: variant.id, stock: { gte: cartItem.quantity } }, data: { stock: { decrement: cartItem.quantity } } })
+        : await tx.product.updateMany({ where: { id: product.id, stock: { gte: cartItem.quantity } }, data: { stock: { decrement: cartItem.quantity } } });
+      if (updated.count !== 1) throw new HttpError(409, `Insufficient stock for ${product.nameEn}`);
+      subtotal += price * cartItem.quantity;
+      items.push({ productId: product.id, productVariantId: variant?.id ?? null, quantity: cartItem.quantity, price });
+      await tx.inventoryLog.create({ data: { productId: product.id, productVariantId: variant?.id ?? null, userId, quantityChange: -cartItem.quantity, reason: InventoryReason.ORDER } });
+    }
+
+    subtotal = Number(subtotal.toFixed(2));
+    const created = await tx.order.create({ data: { userId, addressId: address.id, orderStatus: OrderStatus.CONFIRMED, paymentStatus: PaymentStatus.PENDING, subtotal, shipping: 0, discount: 0, total: subtotal, items: { create: items }, payments: { create: { provider: PaymentProvider.CASH_ON_DELIVERY, amount: subtotal, currency: "EGP", status: PaymentStatus.PENDING } } }, include: orderInclude });
+    await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+    return created;
+  });
+
+  const confirmationEmailSent = await sendOrderConfirmation(order).catch(error => { console.error("Could not send order confirmation", error); return false; });
+  return { ...order, confirmationEmailSent };
 }

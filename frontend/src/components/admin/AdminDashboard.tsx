@@ -1,125 +1,1530 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
 import {
-  Bell, Boxes, ChevronDown, ChevronRight, CircleHelp, Command, CreditCard,
-  Gift, LayoutDashboard, LogOut, Menu, MoreHorizontal, Package, Plus,
-  Search, Settings, ShoppingBag, Sparkles, Tag, TrendingUp, Users, X,
-} from 'lucide-react';
+  Bell,
+  Boxes,
+  ChevronDown,
+  ChevronRight,
+  CircleHelp,
+  Command,
+  CreditCard,
+  Gift,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  MoreHorizontal,
+  Package,
+  Plus,
+  Search,
+  Settings,
+  ShoppingBag,
+  Sparkles,
+  Tag,
+  TrendingUp,
+  Users,
+  X,
+} from "lucide-react";
 
-type Section = 'Overview' | 'Orders' | 'Products' | 'Customers' | 'Discounts';
-type OrderStatus = 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
+type Section = "Overview" | "Orders" | "Products" | "Customers" | "Discounts";
+type OrderStatus = "Processing" | "Shipped" | "Delivered" | "Cancelled";
+type ProductStatusLabel = "Active" | "Low stock" | "Out of stock";
+type AdminCategory = { id: string; nameEn: string };
+type AdminNotification = { id:string; type:"ORDER"|"USER"; title:string; message:string; createdAt:string|null };
+type AdminProduct = {
+  backendId?: string;
+  name: string;
+  sku: string;
+  categoryId?: string;
+  category: string;
+  price: number;
+  stock: number;
+  status: ProductStatusLabel;
+  tone: string;
+};
+
+const productFromApi = (value: Record<string, unknown>): AdminProduct => {
+  const category = value.category as { id?: string; nameEn?: string } | null;
+  const stock = Number(value.stock ?? 0);
+  return {
+    backendId: String(value.id),
+    name: String(value.nameEn),
+    sku: String(value.sku ?? "NO-SKU"),
+    categoryId: category?.id,
+    category: category?.nameEn ?? "Uncategorized",
+    price: Number(value.price),
+    stock,
+    status: stock === 0 ? "Out of stock" : stock < 10 ? "Low stock" : "Active",
+    tone: "from-[#c9aa6a] to-[#efe0b8]",
+  };
+};
 
 const ordersSeed = [
-  { id: '#AU-1048', customer: 'Mariam Hassan', initials: 'MH', color: 'bg-[#e9d8c8]', date: '18 Jul, 10:24 AM', total: 2840, items: 3, status: 'Processing' as OrderStatus },
-  { id: '#AU-1047', customer: 'Nour El Din', initials: 'NE', color: 'bg-[#dce5db]', date: '18 Jul, 9:42 AM', total: 1650, items: 2, status: 'Shipped' as OrderStatus },
-  { id: '#AU-1046', customer: 'Salma Adel', initials: 'SA', color: 'bg-[#e5dfe8]', date: '17 Jul, 8:15 PM', total: 3290, items: 4, status: 'Delivered' as OrderStatus },
-  { id: '#AU-1045', customer: 'Omar Khaled', initials: 'OK', color: 'bg-[#d9e5e7]', date: '17 Jul, 5:36 PM', total: 980, items: 1, status: 'Processing' as OrderStatus },
-  { id: '#AU-1044', customer: 'Farida Ali', initials: 'FA', color: 'bg-[#eee0d5]', date: '17 Jul, 1:18 PM', total: 2140, items: 2, status: 'Cancelled' as OrderStatus },
+  {
+    id: "#AU-1048",
+    customer: "Mariam Hassan",
+    initials: "MH",
+    color: "bg-[#e9d8c8]",
+    date: "18 Jul, 10:24 AM",
+    total: 2840,
+    items: 3,
+    status: "Processing" as OrderStatus,
+  },
+  {
+    id: "#AU-1047",
+    customer: "Nour El Din",
+    initials: "NE",
+    color: "bg-[#dce5db]",
+    date: "18 Jul, 9:42 AM",
+    total: 1650,
+    items: 2,
+    status: "Shipped" as OrderStatus,
+  },
+  {
+    id: "#AU-1046",
+    customer: "Salma Adel",
+    initials: "SA",
+    color: "bg-[#e5dfe8]",
+    date: "17 Jul, 8:15 PM",
+    total: 3290,
+    items: 4,
+    status: "Delivered" as OrderStatus,
+  },
+  {
+    id: "#AU-1045",
+    customer: "Omar Khaled",
+    initials: "OK",
+    color: "bg-[#d9e5e7]",
+    date: "17 Jul, 5:36 PM",
+    total: 980,
+    items: 1,
+    status: "Processing" as OrderStatus,
+  },
+  {
+    id: "#AU-1044",
+    customer: "Farida Ali",
+    initials: "FA",
+    color: "bg-[#eee0d5]",
+    date: "17 Jul, 1:18 PM",
+    total: 2140,
+    items: 2,
+    status: "Cancelled" as OrderStatus,
+  },
 ];
 
-const productsSeed = [
-  { name: 'Sculpted Gold Hoops', sku: 'EAR-GLD-018', category: 'Earrings', price: 1450, stock: 24, status: 'Active', tone: 'from-[#d1ae68] to-[#f1dfb5]' },
-  { name: 'Serpentine Necklace', sku: 'NEC-GLD-024', category: 'Necklaces', price: 2200, stock: 8, status: 'Low stock', tone: 'from-[#b69a65] to-[#e7d6aa]' },
-  { name: 'Pearl Signet Ring', sku: 'RNG-PRL-012', category: 'Rings', price: 1780, stock: 0, status: 'Out of stock', tone: 'from-[#d8d1c3] to-[#fbf8ef]' },
-  { name: 'Twist Cuff Bracelet', sku: 'BRC-GLD-031', category: 'Bracelets', price: 1950, stock: 16, status: 'Active', tone: 'from-[#c8a862] to-[#ebd296]' },
+const productsSeed: AdminProduct[] = [
+  {
+    name: "Sculpted Gold Hoops",
+    sku: "EAR-GLD-018",
+    category: "Earrings",
+    price: 1450,
+    stock: 24,
+    status: "Active",
+    tone: "from-[#d1ae68] to-[#f1dfb5]",
+  },
+  {
+    name: "Serpentine Necklace",
+    sku: "NEC-GLD-024",
+    category: "Necklaces",
+    price: 2200,
+    stock: 8,
+    status: "Low stock",
+    tone: "from-[#b69a65] to-[#e7d6aa]",
+  },
+  {
+    name: "Pearl Signet Ring",
+    sku: "RNG-PRL-012",
+    category: "Rings",
+    price: 1780,
+    stock: 0,
+    status: "Out of stock",
+    tone: "from-[#d8d1c3] to-[#fbf8ef]",
+  },
+  {
+    name: "Twist Cuff Bracelet",
+    sku: "BRC-GLD-031",
+    category: "Bracelets",
+    price: 1950,
+    stock: 16,
+    status: "Active",
+    tone: "from-[#c8a862] to-[#ebd296]",
+  },
 ];
 
-const nav: { label: Section; icon: typeof LayoutDashboard; badge?: string }[] = [
-  { label: 'Overview', icon: LayoutDashboard }, { label: 'Orders', icon: ShoppingBag, badge: '12' },
-  { label: 'Products', icon: Package }, { label: 'Customers', icon: Users }, { label: 'Discounts', icon: Tag },
-];
+const nav: { label: Section; icon: typeof LayoutDashboard; badge?: string }[] =
+  [
+    { label: "Overview", icon: LayoutDashboard },
+    { label: "Orders", icon: ShoppingBag, badge: "12" },
+    { label: "Products", icon: Package },
+    { label: "Customers", icon: Users },
+    { label: "Discounts", icon: Tag },
+  ];
 
-const money = (value: number) => new Intl.NumberFormat('en-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 0 }).format(value);
+const money = (value: number) =>
+  new Intl.NumberFormat("en-EG", {
+    style: "currency",
+    currency: "EGP",
+    maximumFractionDigits: 0,
+  }).format(value);
 
 function AdminLogin({ onLogin }: { onLogin: (token: string) => void }) {
-  const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState(''); const [loading, setLoading] = useState(false);
-  const submit = async (event: React.FormEvent) => { event.preventDefault(); setLoading(true); setError(''); try { const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'; const response = await fetch(`${base}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? 'Unable to sign in'); if (body.data.user.role !== 'ADMIN') throw new Error('This account does not have administrator access'); onLogin(body.data.accessToken); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to sign in'); } finally { setLoading(false); } };
-  return <div className="grid min-h-screen bg-[#1f2b25] p-5 lg:grid-cols-2"><div className="hidden flex-col justify-between rounded-3xl bg-[radial-gradient(circle_at_20%_10%,#657b69,transparent_40%),linear-gradient(145deg,#31483c,#18221d)] p-12 text-white lg:flex"><div className="font-serif text-3xl tracking-[.2em]">AURA</div><div><div className="mb-5 h-px w-12 bg-[#d3b47b]"/><h1 className="max-w-lg font-serif text-5xl leading-tight">Your store,<br/>beautifully managed.</h1><p className="mt-5 max-w-md text-sm leading-6 text-white/50">Orders, inventory, customers, and revenue in one calm workspace.</p></div><div className="text-[10px] uppercase tracking-[.2em] text-white/30">Aura administration · Cairo</div></div><div className="grid place-items-center"><form onSubmit={submit} className="w-full max-w-md rounded-3xl bg-[#faf9f6] p-8 shadow-2xl sm:p-10"><div className="font-serif text-2xl tracking-[.18em] lg:hidden">AURA</div><div className="mt-8 lg:mt-0"><div className="text-[10px] font-bold uppercase tracking-[.2em] text-[#98784c]">Secure workspace</div><h2 className="mt-3 font-serif text-3xl">Welcome back</h2><p className="mt-2 text-sm text-black/40">Sign in with your administrator account.</p></div><div className="mt-8 space-y-4"><label className="block text-xs font-semibold">Email address<input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} required className="mt-2 h-12 w-full rounded-lg border border-black/10 bg-white px-4 font-normal outline-none focus:border-[#667d6b]" placeholder="admin@aura.com"/></label><label className="block text-xs font-semibold">Password<input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required className="mt-2 h-12 w-full rounded-lg border border-black/10 bg-white px-4 font-normal outline-none focus:border-[#667d6b]" placeholder="••••••••"/></label></div>{error&&<div className="mt-4 rounded-lg bg-rose-50 px-3 py-2.5 text-xs text-rose-700">{error}</div>}<button disabled={loading} className="mt-6 h-12 w-full rounded-lg bg-[#24352c] text-xs font-semibold text-white disabled:opacity-50">{loading?'Signing in…':'Sign in to dashboard'}</button><p className="mt-6 text-center text-[10px] leading-4 text-black/35">Administrator access only. Activity may be logged for security.</p></form></div></div>;
-}
-
-function Status({ value }: { value: string }) {
-  const style = value === 'Delivered' || value === 'Active' ? 'bg-emerald-50 text-emerald-700' : value === 'Shipped' ? 'bg-blue-50 text-blue-700' : value === 'Processing' || value === 'Low stock' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700';
-  return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${style}`}><span className="size-1.5 rounded-full bg-current" />{value}</span>;
-}
-
-export default function AdminDashboard() {
-  const [section, setSection] = useState<Section>('Overview');
-  const [mobileNav, setMobileNav] = useState(false);
-  const [orders, setOrders] = useState(ordersSeed);
-  const [products, setProducts] = useState(productsSeed);
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('All');
-  const [showProduct, setShowProduct] = useState(false);
-  const [toast, setToast] = useState('');
-  const [token, setToken] = useState<string | null>(null);
-  const [checkingAuth, setCheckingAuth] = useState(true);
-
-  useEffect(() => { const timer = window.setTimeout(() => { setToken(window.localStorage.getItem('aura_admin_token')); setCheckingAuth(false); }, 0); return () => window.clearTimeout(timer); }, []);
-  useEffect(() => {
-    if (!token) return;
-    const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
-    const headers = { Authorization: `Bearer ${token}` };
-    Promise.all([fetch(`${base}/products?limit=50`, { headers }), fetch(`${base}/orders?limit=50`, { headers })]).then(async ([productsResponse, ordersResponse]) => {
-      if (productsResponse.status === 401 || productsResponse.status === 403 || ordersResponse.status === 401 || ordersResponse.status === 403) { window.localStorage.removeItem('aura_admin_token'); setToken(null); return; }
-      if (productsResponse.ok) { const body = await productsResponse.json(); setProducts(body.data.map((p: Record<string, unknown>) => ({ name: String(p.nameEn), sku: String(p.sku ?? 'NO-SKU'), category: String((p.category as { nameEn?: string } | null)?.nameEn ?? 'Uncategorized'), price: Number(p.price), stock: Number(p.stock ?? 0), status: Number(p.stock ?? 0) === 0 ? 'Out of stock' : Number(p.stock ?? 0) < 10 ? 'Low stock' : 'Active', tone: 'from-[#c9aa6a] to-[#efe0b8]' }))); }
-      if (ordersResponse.ok) { const body = await ordersResponse.json(); setOrders(body.data.map((o: Record<string, unknown>) => { const user = o.user as { fullName?: string } | null; const name = user?.fullName ?? 'Guest'; const status = String(o.orderStatus).toLowerCase(); return { backendId: String(o.id), id: `#${String(o.id).slice(0, 8).toUpperCase()}`, customer: name, initials: name.split(' ').map(v => v[0]).join('').slice(0,2), color: 'bg-[#dce5db]', date: new Date(String(o.createdAt)).toLocaleString('en-EG', { dateStyle: 'medium', timeStyle: 'short' }), total: Number(o.total), items: (o.items as unknown[]).length, status: (status.charAt(0).toUpperCase() + status.slice(1)) as OrderStatus }; })); }
-    }).catch(() => { setToast('Backend is unavailable — showing cached dashboard data'); window.setTimeout(() => setToast(''), 2400); });
-  }, [token]);
-
-  const visibleOrders = useMemo(() => orders.filter(o => (filter === 'All' || o.status === filter) && `${o.id} ${o.customer}`.toLowerCase().includes(query.toLowerCase())), [orders, query, filter]);
-  const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2400); };
-  const updateOrder = (id: string, status: OrderStatus) => { const selected = orders.find(o => o.id === id) as (typeof orders[number] & { backendId?: string }) | undefined; setOrders(v => v.map(o => o.id === id ? { ...o, status } : o)); if (selected?.backendId && token) { const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'; fetch(`${base}/orders/${selected.backendId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ orderStatus: status.toUpperCase().replace(' ', '_') }) }).then(response => { if (!response.ok) throw new Error(); notify(`${id} updated to ${status}`); }).catch(() => notify('Could not save the order update')); } else notify(`${id} updated to ${status}`); };
-
-  if (checkingAuth) return <div className="grid min-h-screen place-items-center bg-[#1f2b25] text-sm text-white/60">Loading Aura administration…</div>;
-  if (!token) return <AdminLogin onLogin={(value) => { window.localStorage.setItem('aura_admin_token', value); setToken(value); }} />;
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const base =
+        process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+      const response = await fetch(`${base}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Unable to sign in");
+      if (body.data.user.role !== "ADMIN")
+        throw new Error("This account does not have administrator access");
+      onLogin(body.data.accessToken);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to sign in");
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
-    <div className="min-h-screen bg-[#f6f5f1] font-sans text-[#252622]">
-      {mobileNav && <button className="fixed inset-0 z-40 bg-black/30 lg:hidden" onClick={() => setMobileNav(false)} aria-label="Close navigation" />}
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-black/8 bg-[#1f2b25] text-white transition-transform lg:translate-x-0 ${mobileNav ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex h-20 items-center justify-between border-b border-white/10 px-7"><div><div className="font-serif text-2xl tracking-[.18em]">AURA</div><div className="mt-0.5 text-[9px] uppercase tracking-[.28em] text-white/45">Administration</div></div><button className="lg:hidden" onClick={() => setMobileNav(false)}><X size={20} /></button></div>
-        <nav className="flex-1 px-3 py-7"><div className="mb-3 px-4 text-[10px] font-semibold uppercase tracking-[.18em] text-white/35">Workspace</div>{nav.map(({ label, icon: Icon, badge }) => <button key={label} onClick={() => { setSection(label); setMobileNav(false); setQuery(''); setFilter('All'); }} className={`mb-1 flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm transition ${section === label ? 'bg-white text-[#203028] shadow-sm' : 'text-white/65 hover:bg-white/8 hover:text-white'}`}><Icon size={17} strokeWidth={1.8} /><span className="flex-1 text-left">{label}</span>{badge && <span className={`rounded-full px-2 py-0.5 text-[10px] ${section === label ? 'bg-[#203028] text-white' : 'bg-[#cba66b] text-[#203028]'}`}>{badge}</span>}</button>)}</nav>
-        <div className="border-t border-white/10 p-3"><button className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-white/60 hover:bg-white/8 hover:text-white"><Settings size={17} /> Settings</button><button className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-white/60 hover:bg-white/8 hover:text-white"><CircleHelp size={17} /> Help center</button><button onClick={() => { window.localStorage.removeItem('aura_admin_token'); setToken(null); }} className="mt-3 flex w-full items-center gap-3 rounded-xl bg-white/7 p-3 text-left"><div className="grid size-9 place-items-center rounded-full bg-[#d3b47b] text-xs font-bold text-[#1f2b25]">HS</div><div className="min-w-0 flex-1"><div className="truncate text-xs font-medium">Hadeer Shibt</div><div className="truncate text-[10px] text-white/40">Store owner · Sign out</div></div><LogOut size={15} className="text-white/35" /></button></div>
-      </aside>
-
-      <div className="lg:pl-[248px]">
-        <header className="sticky top-0 z-30 flex h-20 items-center border-b border-black/7 bg-[#f6f5f1]/90 px-5 backdrop-blur-xl md:px-8 lg:px-10"><button className="mr-4 lg:hidden" onClick={() => setMobileNav(true)}><Menu /></button><div className="relative hidden w-full max-w-sm md:block"><Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-black/35" size={16} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search orders, products, customers..." className="h-10 w-full rounded-lg border border-black/8 bg-white/70 pl-10 pr-14 text-xs outline-none focus:border-[#768978]" /><span className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded border border-black/10 px-1.5 py-0.5 text-[10px] text-black/35"><Command size={10}/> K</span></div><div className="ml-auto flex items-center gap-2"><button className="relative grid size-10 place-items-center rounded-full hover:bg-black/5" aria-label="Notifications"><Bell size={18} /><span className="absolute right-2.5 top-2 size-2 rounded-full border-2 border-[#f6f5f1] bg-[#bd6c50]" /></button><div className="mx-2 hidden h-6 w-px bg-black/10 sm:block" /><div className="hidden text-right sm:block"><div className="text-xs font-semibold">Aura Store</div><div className="text-[10px] text-black/40">Cairo, Egypt</div></div><div className="grid size-9 place-items-center rounded-full bg-[#d8c3a1] text-xs font-bold">AS</div><ChevronDown size={14} className="text-black/40" /></div></header>
-
-        <main className="mx-auto max-w-[1500px] px-5 py-8 md:px-8 lg:px-10 lg:py-10">
-          {section === 'Overview' && <Overview orders={orders} products={products} onNavigate={setSection} />}
-          {section === 'Orders' && <OrdersView orders={visibleOrders} filter={filter} setFilter={setFilter} updateOrder={updateOrder} />}
-          {section === 'Products' && <ProductsView products={products.filter(p => p.name.toLowerCase().includes(query.toLowerCase()))} setProducts={setProducts} openCreate={() => setShowProduct(true)} notify={notify} />}
-          {section === 'Customers' && <CustomersView />}
-          {section === 'Discounts' && <DiscountsView notify={notify} />}
-        </main>
+    <div className="grid min-h-screen bg-[#1f2b25] p-5 lg:grid-cols-2">
+      <div className="hidden flex-col justify-between rounded-3xl bg-[radial-gradient(circle_at_20%_10%,#657b69,transparent_40%),linear-gradient(145deg,#31483c,#18221d)] p-12 text-white lg:flex">
+        <div className="font-serif text-3xl tracking-[.2em]">AURA</div>
+        <div>
+          <div className="mb-5 h-px w-12 bg-[#d3b47b]" />
+          <h1 className="max-w-lg font-serif text-5xl leading-tight">
+            Your store,
+            <br />
+            beautifully managed.
+          </h1>
+          <p className="mt-5 max-w-md text-sm leading-6 text-white/50">
+            Orders, inventory, customers, and revenue in one calm workspace.
+          </p>
+        </div>
+        <div className="text-[10px] uppercase tracking-[.2em] text-white/30">
+          Aura administration · Cairo
+        </div>
       </div>
-      {showProduct && <ProductModal close={() => setShowProduct(false)} save={(product) => { const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'; fetch(`${base}/products`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ nameEn: product.name, nameAr: product.name, price: product.price, stock: product.stock, sku: product.sku, status: 'ACTIVE' }) }).then(response => { if (!response.ok) throw new Error(); setProducts(v => [product, ...v]); setShowProduct(false); notify('Product added to catalog'); }).catch(() => notify('Could not save the product')); }} />}
-      {toast && <div className="fixed bottom-6 right-6 z-[70] rounded-xl bg-[#1f2b25] px-5 py-3 text-sm text-white shadow-2xl"><span className="mr-2 text-[#d3b47b]">●</span>{toast}</div>}
+      <div className="grid place-items-center">
+        <form
+          onSubmit={submit}
+          className="w-full max-w-md rounded-3xl bg-[#faf9f6] p-8 shadow-2xl sm:p-10"
+        >
+          <div className="font-serif text-2xl tracking-[.18em] lg:hidden">
+            AURA
+          </div>
+          <div className="mt-8 lg:mt-0">
+            <div className="text-[10px] font-bold uppercase tracking-[.2em] text-[#98784c]">
+              Secure workspace
+            </div>
+            <h2 className="mt-3 font-serif text-3xl">Welcome back</h2>
+            <p className="mt-2 text-sm text-black/40">
+              Sign in with your administrator account.
+            </p>
+          </div>
+          <div className="mt-8 space-y-4">
+            <label className="block text-xs font-semibold">
+              Email address
+              <input
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="mt-2 h-12 w-full rounded-lg border border-black/10 bg-white px-4 font-normal outline-none focus:border-[#667d6b]"
+                placeholder="admin@aura.com"
+              />
+            </label>
+            <label className="block text-xs font-semibold">
+              Password
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="mt-2 h-12 w-full rounded-lg border border-black/10 bg-white px-4 font-normal outline-none focus:border-[#667d6b]"
+                placeholder="••••••••"
+              />
+            </label>
+          </div>
+          {error && (
+            <div className="mt-4 rounded-lg bg-rose-50 px-3 py-2.5 text-xs text-rose-700">
+              {error}
+            </div>
+          )}
+          <button
+            disabled={loading}
+            className="mt-6 h-12 w-full rounded-lg bg-[#24352c] text-xs font-semibold text-white disabled:opacity-50"
+          >
+            {loading ? "Signing in…" : "Sign in to dashboard"}
+          </button>
+          <p className="mt-6 text-center text-[10px] leading-4 text-black/35">
+            Administrator access only. Activity may be logged for security.
+          </p>
+        </form>
+      </div>
     </div>
   );
 }
 
-function Heading({ title, copy, action }: { title: string; copy: string; action?: React.ReactNode }) { return <div className="mb-8 flex flex-wrap items-end justify-between gap-4"><div><div className="mb-2 text-[10px] font-bold uppercase tracking-[.2em] text-[#8d7450]">Aura administration</div><h1 className="font-serif text-3xl md:text-[40px]">{title}</h1><p className="mt-2 text-sm text-black/45">{copy}</p></div>{action}</div>; }
-
-function Overview({ orders, products, onNavigate }: { orders: typeof ordersSeed; products: typeof productsSeed; onNavigate: (s: Section) => void }) {
-  const cards = [{ label: 'Net revenue', value: 'EGP 128.4K', change: '+12.5%', icon: CreditCard }, { label: 'Orders', value: '386', change: '+8.2%', icon: ShoppingBag }, { label: 'Customers', value: '1,248', change: '+18.1%', icon: Users }, { label: 'Avg. order value', value: 'EGP 1,842', change: '+4.6%', icon: TrendingUp }];
-  return <><Heading title="Good morning, Hadeer" copy="Here’s what’s happening with your store today." action={<button onClick={() => onNavigate('Products')} className="flex h-11 items-center gap-2 rounded-lg bg-[#24352c] px-4 text-xs font-semibold text-white hover:bg-[#31483c]"><Plus size={16}/> Add product</button>} />
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(({ label, value, change, icon: Icon }) => <div key={label} className="rounded-2xl border border-black/7 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.02)]"><div className="flex items-start justify-between"><div className="grid size-10 place-items-center rounded-xl bg-[#edf0eb] text-[#506252]"><Icon size={18}/></div><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">{change}</span></div><div className="mt-5 text-xs text-black/42">{label}</div><div className="mt-1 text-2xl font-semibold tracking-tight">{value}</div><div className="mt-2 text-[10px] text-black/35">vs. previous 30 days</div></div>)}</div>
-    <div className="mt-5 grid gap-5 xl:grid-cols-[1.55fr_1fr]"><div className="rounded-2xl border border-black/7 bg-white p-6"><div className="flex items-center justify-between"><div><h2 className="font-serif text-xl">Revenue overview</h2><p className="mt-1 text-[11px] text-black/40">Revenue across the last 7 months</p></div><button className="flex items-center gap-2 rounded-lg border border-black/8 px-3 py-2 text-[11px]">Last 7 months <ChevronDown size={13}/></button></div><div className="mt-8 flex h-52 items-end gap-3 border-b border-black/8">{[44,58,50,72,66,84,78,94,88,108,102,124,118,142].map((h,i) => <div key={i} className="group relative flex h-full flex-1 items-end"><div style={{height:`${h}px`}} className={`w-full rounded-t-sm ${i === 13 ? 'bg-[#c49b5d]' : 'bg-[#2c4035]/85'} transition hover:bg-[#c49b5d]`} /></div>)}</div><div className="mt-3 flex justify-between text-[10px] text-black/35"><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span></div></div>
-      <div className="rounded-2xl border border-black/7 bg-[#26372f] p-6 text-white"><div className="flex items-center justify-between"><div><h2 className="font-serif text-xl">Sales by category</h2><p className="mt-1 text-[11px] text-white/40">Based on total revenue</p></div><MoreHorizontal size={18} className="text-white/40"/></div><div className="mx-auto my-6 grid size-40 place-items-center rounded-full" style={{background:'conic-gradient(#d1aa6a 0 38%, #899b88 38% 65%, #d9d2c5 65% 83%, #68796e 83%)'}}><div className="grid size-24 place-items-center rounded-full bg-[#26372f] text-center"><div><div className="text-[10px] text-white/45">Total sales</div><div className="mt-1 text-lg font-semibold">EGP 128K</div></div></div></div>{[['Rings','38%','#d1aa6a'],['Necklaces','27%','#899b88'],['Earrings','18%','#d9d2c5'],['Bracelets','17%','#68796e']].map(x=><div key={x[0]} className="mb-3 flex items-center text-xs"><span className="mr-2 size-2 rounded-full" style={{background:x[2]}}/><span className="text-white/65">{x[0]}</span><span className="ml-auto font-semibold">{x[1]}</span></div>)}</div></div>
-    <div className="mt-5 grid gap-5 xl:grid-cols-[1.55fr_1fr]"><div className="overflow-hidden rounded-2xl border border-black/7 bg-white"><div className="flex items-center justify-between p-6"><div><h2 className="font-serif text-xl">Recent orders</h2><p className="mt-1 text-[11px] text-black/40">Latest purchases from your store</p></div><button onClick={()=>onNavigate('Orders')} className="flex items-center gap-1 text-xs font-semibold text-[#526956]">View all <ChevronRight size={14}/></button></div><OrderTable orders={orders.slice(0,4)} /></div><div className="rounded-2xl border border-black/7 bg-white p-6"><div className="flex items-center justify-between"><h2 className="font-serif text-xl">Inventory alerts</h2><button onClick={()=>onNavigate('Products')} className="text-xs font-semibold text-[#526956]">View inventory</button></div><div className="mt-5 space-y-5">{products.slice(1,4).map(p=><div key={p.name} className="flex items-center gap-3"><div className={`size-12 rounded-lg bg-gradient-to-br ${p.tone}`}/><div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold">{p.name}</div><div className="mt-1 text-[10px] text-black/40">{p.sku}</div></div><div className={`text-right text-xs font-bold ${p.stock === 0 ? 'text-rose-600' : 'text-amber-600'}`}>{p.stock}<div className="text-[9px] font-normal text-black/35">in stock</div></div></div>)}</div><button onClick={()=>onNavigate('Products')} className="mt-6 w-full rounded-lg border border-black/8 py-2.5 text-xs font-semibold hover:bg-black/[.02]">Manage inventory</button></div></div></>;
+function Status({ value }: { value: string }) {
+  const style =
+    value === "Delivered" || value === "Active"
+      ? "bg-emerald-50 text-emerald-700"
+      : value === "Shipped"
+        ? "bg-blue-50 text-blue-700"
+        : value === "Processing" || value === "Low stock"
+          ? "bg-amber-50 text-amber-700"
+          : "bg-rose-50 text-rose-700";
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${style}`}
+    >
+      <span className="size-1.5 rounded-full bg-current" />
+      {value}
+    </span>
+  );
 }
 
-function OrderTable({ orders, editable, updateOrder }: { orders: typeof ordersSeed; editable?: boolean; updateOrder?: (id:string,status:OrderStatus)=>void }) { return <div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left"><thead><tr className="border-y border-black/6 bg-[#faf9f6] text-[9px] uppercase tracking-[.13em] text-black/38"><th className="px-6 py-3 font-semibold">Order</th><th className="px-4 py-3 font-semibold">Customer</th><th className="px-4 py-3 font-semibold">Date</th><th className="px-4 py-3 font-semibold">Total</th><th className="px-4 py-3 font-semibold">Status</th><th className="px-4 py-3"/></tr></thead><tbody>{orders.map(o=><tr key={o.id} className="border-b border-black/5 text-xs last:border-0 hover:bg-[#fbfaf7]"><td className="px-6 py-4 font-bold">{o.id}<div className="mt-1 text-[9px] font-normal text-black/35">{o.items} items</div></td><td className="px-4 py-4"><div className="flex items-center gap-2.5"><div className={`grid size-8 place-items-center rounded-full ${o.color} text-[10px] font-bold`}>{o.initials}</div>{o.customer}</div></td><td className="px-4 py-4 text-black/48">{o.date}</td><td className="px-4 py-4 font-semibold">{money(o.total)}</td><td className="px-4 py-4">{editable ? <select value={o.status} onChange={e=>updateOrder?.(o.id,e.target.value as OrderStatus)} className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-[11px] outline-none"><option>Processing</option><option>Shipped</option><option>Delivered</option><option>Cancelled</option></select> : <Status value={o.status}/>}</td><td className="px-4 py-4"><button><MoreHorizontal size={16}/></button></td></tr>)}</tbody></table></div>; }
+export default function AdminDashboard() {
+  const [section, setSection] = useState<Section>("Overview");
+  const [mobileNav, setMobileNav] = useState(false);
+  const [orders, setOrders] = useState(ordersSeed);
+  const [products, setProducts] = useState(productsSeed);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("All");
+  const [showProduct, setShowProduct] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(
+    null,
+  );
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
+  const [toast, setToast] = useState("");
+  const [token, setToken] = useState<string | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-function OrdersView({orders,filter,setFilter,updateOrder}:{orders:typeof ordersSeed;filter:string;setFilter:(v:string)=>void;updateOrder:(id:string,s:OrderStatus)=>void}) { return <><Heading title="Orders" copy="Track, fulfill, and manage every customer order." action={<button className="rounded-lg border border-black/10 bg-white px-4 py-2.5 text-xs font-semibold">Export orders</button>}/><div className="mb-4 flex gap-2 overflow-x-auto">{['All','Processing','Shipped','Delivered','Cancelled'].map(x=><button key={x} onClick={()=>setFilter(x)} className={`rounded-full px-4 py-2 text-xs ${filter===x?'bg-[#26372f] text-white':'border border-black/8 bg-white text-black/55'}`}>{x}</button>)}</div><div className="overflow-hidden rounded-2xl border border-black/7 bg-white"><OrderTable orders={orders} editable updateOrder={updateOrder}/>{orders.length===0&&<div className="p-12 text-center text-sm text-black/40">No matching orders found.</div>}</div></>; }
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setToken(window.localStorage.getItem("aura_admin_token"));
+      setCheckingAuth(false);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    if (!token) return;
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+    const headers = { Authorization: `Bearer ${token}` };
+    Promise.all([
+      fetch(`${base}/products?limit=50`, { headers }),
+      fetch(`${base}/orders?limit=50`, { headers }),
+      fetch(`${base}/categories`, { headers }),
+    ])
+      .then(async ([productsResponse, ordersResponse, categoriesResponse]) => {
+        if (
+          productsResponse.status === 401 ||
+          productsResponse.status === 403 ||
+          ordersResponse.status === 401 ||
+          ordersResponse.status === 403
+        ) {
+          window.localStorage.removeItem("aura_admin_token");
+          setToken(null);
+          return;
+        }
+        if (productsResponse.ok) {
+          const body = await productsResponse.json();
+          setProducts(body.data.map(productFromApi));
+        }
+        if (ordersResponse.ok) {
+          const body = await ordersResponse.json();
+          setOrders(
+            body.data.map((o: Record<string, unknown>) => {
+              const user = o.user as { fullName?: string } | null;
+              const name = user?.fullName ?? "Guest";
+              const status = String(o.orderStatus).toLowerCase();
+              return {
+                backendId: String(o.id),
+                id: `#${String(o.id).slice(0, 8).toUpperCase()}`,
+                customer: name,
+                initials: name
+                  .split(" ")
+                  .map((v) => v[0])
+                  .join("")
+                  .slice(0, 2),
+                color: "bg-[#dce5db]",
+                date: new Date(String(o.createdAt)).toLocaleString("en-EG", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }),
+                total: Number(o.total),
+                items: (o.items as unknown[]).length,
+                status: (status.charAt(0).toUpperCase() +
+                  status.slice(1)) as OrderStatus,
+              };
+            }),
+          );
+        }
+        if (categoriesResponse.ok) {
+          const body = await categoriesResponse.json();
+          setCategories(
+            body.data.map((category: AdminCategory) => ({
+              id: category.id,
+              nameEn: category.nameEn,
+            })),
+          );
+        }
+      })
+      .catch(() => {
+        setToast("Backend is unavailable — showing cached dashboard data");
+        window.setTimeout(() => setToast(""), 2400);
+      });
+  }, [token]);
+  useEffect(() => {
+    if (!token) return;
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+    const headers = { Authorization: `Bearer ${token}` };
+    const refresh = async () => {
+      const [notificationResponse, orderResponse] = await Promise.all([
+        fetch(`${base}/admin/notifications`, { headers }),
+        fetch(`${base}/orders?limit=50`, { headers }),
+      ]);
+      if (notificationResponse.ok) setNotifications((await notificationResponse.json()).data);
+      if (orderResponse.ok) {
+        const body = await orderResponse.json();
+        setOrders(body.data.map((o: Record<string, unknown>) => {
+          const user = o.user as { fullName?: string } | null;
+          const name = user?.fullName ?? "Guest";
+          const status = String(o.orderStatus).toLowerCase();
+          return { backendId:String(o.id),id:`#${String(o.id).slice(0,8).toUpperCase()}`,customer:name,initials:name.split(" ").map(value=>value[0]).join("").slice(0,2),color:"bg-[#dce5db]",date:new Date(String(o.createdAt)).toLocaleString("en-EG",{dateStyle:"medium",timeStyle:"short"}),total:Number(o.total),items:(o.items as unknown[]).length,status:(status.charAt(0).toUpperCase()+status.slice(1)) as OrderStatus };
+        }));
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 15000);
+    return () => window.clearInterval(timer);
+  }, [token]);
 
-function ProductsView({products,setProducts,openCreate,notify}:{products:typeof productsSeed;setProducts:React.Dispatch<React.SetStateAction<typeof productsSeed>>;openCreate:()=>void;notify:(s:string)=>void}) { const change=(sku:string,delta:number)=>{setProducts(v=>v.map(p=>p.sku===sku?{...p,stock:Math.max(0,p.stock+delta),status:Math.max(0,p.stock+delta)===0?'Out of stock':Math.max(0,p.stock+delta)<10?'Low stock':'Active'}:p));notify('Inventory updated');}; return <><Heading title="Products & inventory" copy="Create products, adjust stock, and organize your catalog." action={<button onClick={openCreate} className="flex items-center gap-2 rounded-lg bg-[#24352c] px-4 py-3 text-xs font-semibold text-white"><Plus size={16}/> Add product</button>}/><div className="grid gap-4 sm:grid-cols-3"><MiniStat icon={Package} label="Total products" value={String(products.length+124)}/><MiniStat icon={Boxes} label="Low stock" value="8"/><MiniStat icon={Sparkles} label="Featured" value="12"/></div><div className="mt-5 overflow-hidden rounded-2xl border border-black/7 bg-white"><div className="border-b border-black/6 p-5 text-sm font-semibold">All products</div><div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead className="bg-[#faf9f6] text-[9px] uppercase tracking-widest text-black/40"><tr><th className="px-5 py-3">Product</th><th>Category</th><th>Price</th><th>Inventory</th><th>Status</th><th/></tr></thead><tbody>{products.map(p=><tr key={p.sku} className="border-t border-black/5 text-xs"><td className="px-5 py-4"><div className="flex items-center gap-3"><div className={`size-12 rounded-lg bg-gradient-to-br ${p.tone}`}/><div><div className="font-semibold">{p.name}</div><div className="mt-1 text-[10px] text-black/38">{p.sku}</div></div></div></td><td className="text-black/52">{p.category}</td><td className="font-semibold">{money(p.price)}</td><td><div className="flex items-center gap-2"><button onClick={()=>change(p.sku,-1)} className="grid size-7 place-items-center rounded border border-black/10">−</button><span className="w-5 text-center font-semibold">{p.stock}</span><button onClick={()=>change(p.sku,1)} className="grid size-7 place-items-center rounded border border-black/10">+</button></div></td><td><Status value={p.status}/></td><td><MoreHorizontal size={16}/></td></tr>)}</tbody></table></div></div></>; }
+  const visibleOrders = useMemo(
+    () =>
+      orders.filter(
+        (o) =>
+          (filter === "All" || o.status === filter) &&
+          `${o.id} ${o.customer}`.toLowerCase().includes(query.toLowerCase()),
+      ),
+    [orders, query, filter],
+  );
+  const notify = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(""), 2400);
+  };
+  const updateOrder = (id: string, status: OrderStatus) => {
+    const selected = orders.find((o) => o.id === id) as
+      ((typeof orders)[number] & { backendId?: string }) | undefined;
+    setOrders((v) => v.map((o) => (o.id === id ? { ...o, status } : o)));
+    if (selected?.backendId && token) {
+      const base =
+        process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+      fetch(`${base}/orders/${selected.backendId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          orderStatus: status.toUpperCase().replace(" ", "_"),
+        }),
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error();
+          notify(`${id} updated to ${status}`);
+        })
+        .catch(() => notify("Could not save the order update"));
+    } else notify(`${id} updated to ${status}`);
+  };
+  const saveProduct = async (product: AdminProduct) => {
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+    const current = editingProduct;
+    const response = await fetch(
+      `${base}/products${current?.backendId ? `/${current.backendId}` : ""}`,
+      {
+        method: current?.backendId ? "PATCH" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          nameEn: product.name,
+          nameAr: product.name,
+          categoryId: product.categoryId || null,
+          price: product.price,
+          stock: product.stock,
+          sku: product.sku,
+          status: "ACTIVE",
+        }),
+      },
+    );
+    const body = await response.json();
+    if (!response.ok)
+      throw new Error(body.error ?? "Could not save the product");
+    const saved = productFromApi(body.data);
+    setProducts((items) =>
+      current?.backendId
+        ? items.map((item) =>
+            item.backendId === current.backendId ? saved : item,
+          )
+        : [saved, ...items],
+    );
+    setShowProduct(false);
+    setEditingProduct(null);
+    notify(current ? "Product updated" : "Product added to catalog");
+  };
+  const createCategory = async (name: string) => {
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+    const response = await fetch(`${base}/categories`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ nameEn: name, nameAr: name }),
+    });
+    const body = await response.json();
+    if (!response.ok)
+      throw new Error(body.error ?? "Could not create the category");
+    const category = {
+      id: String(body.data.id),
+      nameEn: String(body.data.nameEn),
+    };
+    setCategories((items) =>
+      [...items, category].sort((a, b) => a.nameEn.localeCompare(b.nameEn)),
+    );
+    return category;
+  };
 
-function MiniStat({icon:Icon,label,value}:{icon:typeof Package;label:string;value:string}){return <div className="flex items-center gap-4 rounded-2xl border border-black/7 bg-white p-5"><div className="grid size-11 place-items-center rounded-xl bg-[#edf0eb] text-[#536858]"><Icon size={19}/></div><div><div className="text-xl font-bold">{value}</div><div className="text-[11px] text-black/40">{label}</div></div></div>}
+  if (checkingAuth)
+    return (
+      <div className="grid min-h-screen place-items-center bg-[#1f2b25] text-sm text-white/60">
+        Loading Aura administration…
+      </div>
+    );
+  if (!token)
+    return (
+      <AdminLogin
+        onLogin={(value) => {
+          window.localStorage.setItem("aura_admin_token", value);
+          setToken(value);
+        }}
+      />
+    );
+  return (
+    <div className="min-h-screen bg-[#f6f5f1] font-sans text-[#252622]">
+      {mobileNav && (
+        <button
+          className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+          onClick={() => setMobileNav(false)}
+          aria-label="Close navigation"
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-black/8 bg-[#1f2b25] text-white transition-transform lg:translate-x-0 ${mobileNav ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        <div className="flex h-20 items-center justify-between border-b border-white/10 px-7">
+          <div>
+            <div className="font-serif text-2xl tracking-[.18em]">AURA</div>
+            <div className="mt-0.5 text-[9px] uppercase tracking-[.28em] text-white/45">
+              Administration
+            </div>
+          </div>
+          <button className="lg:hidden" onClick={() => setMobileNav(false)}>
+            <X size={20} />
+          </button>
+        </div>
+        <nav className="flex-1 px-3 py-7">
+          <div className="mb-3 px-4 text-[10px] font-semibold uppercase tracking-[.18em] text-white/35">
+            Workspace
+          </div>
+          {nav.map(({ label, icon: Icon, badge }) => (
+            <button
+              key={label}
+              onClick={() => {
+                setSection(label);
+                setMobileNav(false);
+                setQuery("");
+                setFilter("All");
+              }}
+              className={`mb-1 flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm transition ${section === label ? "bg-white text-[#203028] shadow-sm" : "text-white/65 hover:bg-white/8 hover:text-white"}`}
+            >
+              <Icon size={17} strokeWidth={1.8} />
+              <span className="flex-1 text-left">{label}</span>
+              {badge && (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] ${section === label ? "bg-[#203028] text-white" : "bg-[#cba66b] text-[#203028]"}`}
+                >
+                  {badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+        <div className="border-t border-white/10 p-3">
+          <button className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-white/60 hover:bg-white/8 hover:text-white">
+            <Settings size={17} /> Settings
+          </button>
+          <button className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-white/60 hover:bg-white/8 hover:text-white">
+            <CircleHelp size={17} /> Help center
+          </button>
+          <button
+            onClick={() => {
+              window.localStorage.removeItem("aura_admin_token");
+              setToken(null);
+            }}
+            className="mt-3 flex w-full items-center gap-3 rounded-xl bg-white/7 p-3 text-left"
+          >
+            <div className="grid size-9 place-items-center rounded-full bg-[#d3b47b] text-xs font-bold text-[#1f2b25]">
+              HS
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs font-medium">Hadeer Shibt</div>
+              <div className="truncate text-[10px] text-white/40">
+                Store owner · Sign out
+              </div>
+            </div>
+            <LogOut size={15} className="text-white/35" />
+          </button>
+        </div>
+      </aside>
 
-function CustomersView(){const people=[['Mariam Hassan','mariam.hassan@email.com','12','EGP 18,420','18 Jul 2026'],['Nour El Din','nour.eldin@email.com','8','EGP 12,680','18 Jul 2026'],['Salma Adel','salma.adel@email.com','15','EGP 26,140','17 Jul 2026'],['Omar Khaled','omar.k@email.com','4','EGP 6,820','17 Jul 2026']];return <><Heading title="Customers" copy="Understand and support the people who shop with Aura."/><div className="grid gap-4 sm:grid-cols-3"><MiniStat icon={Users} label="Total customers" value="1,248"/><MiniStat icon={TrendingUp} label="Returning rate" value="42.8%"/><MiniStat icon={Gift} label="VIP customers" value="86"/></div><div className="mt-5 overflow-hidden rounded-2xl border border-black/7 bg-white"><table className="w-full min-w-[650px] text-left text-xs"><thead className="bg-[#faf9f6] text-[9px] uppercase tracking-widest text-black/40"><tr><th className="px-6 py-4">Customer</th><th>Orders</th><th>Total spent</th><th>Last order</th><th/></tr></thead><tbody>{people.map((p)=><tr key={p[1]} className="border-t border-black/5"><td className="px-6 py-4"><div className="font-semibold">{p[0]}</div><div className="mt-1 text-[10px] text-black/38">{p[1]}</div></td><td>{p[2]}</td><td className="font-semibold">{p[3]}</td><td className="text-black/45">{p[4]}</td><td><MoreHorizontal size={16}/></td></tr>)}</tbody></table></div></>}
+      <div className="lg:pl-[248px]">
+        <header className="sticky top-0 z-30 flex h-20 items-center border-b border-black/7 bg-[#f6f5f1]/90 px-5 backdrop-blur-xl md:px-8 lg:px-10">
+          <button className="mr-4 lg:hidden" onClick={() => setMobileNav(true)}>
+            <Menu />
+          </button>
+          <div className="relative hidden w-full max-w-sm md:block">
+            <Search
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-black/35"
+              size={16}
+            />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search orders, products, customers..."
+              className="h-10 w-full rounded-lg border border-black/8 bg-white/70 pl-10 pr-14 text-xs outline-none focus:border-[#768978]"
+            />
+            <span className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded border border-black/10 px-1.5 py-0.5 text-[10px] text-black/35">
+              <Command size={10} /> K
+            </span>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="relative">
+              <button onClick={() => setNotificationsOpen(value => !value)} className="relative grid size-10 place-items-center rounded-full hover:bg-black/5" aria-label="Notifications">
+                <Bell size={18} />
+                {notifications.length > 0 && <span className="absolute right-2.5 top-2 size-2 rounded-full border-2 border-[#f6f5f1] bg-[#bd6c50]" />}
+              </button>
+              {notificationsOpen && <div className="absolute right-0 top-12 z-50 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-black/8 bg-white shadow-2xl"><div className="border-b border-black/7 px-5 py-4"><div className="text-sm font-semibold">Notifications</div><div className="mt-1 text-[10px] text-black/40">Updates automatically every 15 seconds</div></div><div className="max-h-96 overflow-y-auto">{notifications.length===0?<div className="p-8 text-center text-xs text-black/40">No recent activity</div>:notifications.map(item=><button key={item.id} onClick={()=>{if(item.type==='ORDER')setSection('Orders');else setSection('Customers');setNotificationsOpen(false);}} className="block w-full border-b border-black/5 px-5 py-4 text-left hover:bg-black/[.02]"><div className="flex items-center gap-2"><span className={`size-2 rounded-full ${item.type==='ORDER'?'bg-[#bd6c50]':'bg-[#657b69]'}`}/><span className="text-xs font-semibold">{item.title}</span><span className="ml-auto text-[9px] uppercase text-black/35">{item.type}</span></div><p className="mt-2 text-[11px] leading-4 text-black/50">{item.message}</p><div className="mt-2 text-[9px] text-black/30">{item.createdAt?new Date(item.createdAt).toLocaleString('en-EG'):'Just now'}</div></button>)}</div></div>}
+            </div>
+            <div className="mx-2 hidden h-6 w-px bg-black/10 sm:block" />
+            <div className="hidden text-right sm:block">
+              <div className="text-xs font-semibold">Aura Store</div>
+              <div className="text-[10px] text-black/40">Cairo, Egypt</div>
+            </div>
+            <div className="grid size-9 place-items-center rounded-full bg-[#d8c3a1] text-xs font-bold">
+              AS
+            </div>
+            <ChevronDown size={14} className="text-black/40" />
+          </div>
+        </header>
 
-function DiscountsView({notify}:{notify:(s:string)=>void}){const [active,setActive]=useState([true,true,false]);const deals=[['SUMMER20','20% off','Orders over EGP 1,500','284 uses'],['WELCOME10','10% off','First order only','92 uses'],['FREESHIP','Free shipping','Orders over EGP 2,000','Inactive']];return <><Heading title="Discounts" copy="Create offers that turn browsers into loyal customers." action={<button onClick={()=>notify('New discount draft created')} className="flex items-center gap-2 rounded-lg bg-[#24352c] px-4 py-3 text-xs font-semibold text-white"><Plus size={16}/> Create discount</button>}/><div className="grid gap-4 lg:grid-cols-3">{deals.map((d,i)=><div key={d[0]} className="rounded-2xl border border-black/7 bg-white p-6"><div className="flex items-start justify-between"><div className="grid size-10 place-items-center rounded-xl bg-[#f3ebdc] text-[#9a733d]"><Tag size={18}/></div><button onClick={()=>setActive(v=>v.map((x,j)=>i===j?!x:x))} className={`relative h-6 w-11 rounded-full transition ${active[i]?'bg-[#385243]':'bg-black/15'}`}><span className={`absolute top-1 size-4 rounded-full bg-white transition ${active[i]?'left-6':'left-1'}`}/></button></div><div className="mt-6 font-mono text-lg font-bold tracking-wider">{d[0]}</div><div className="mt-2 text-sm font-semibold">{d[1]}</div><div className="mt-1 text-xs text-black/42">{d[2]}</div><div className="mt-6 border-t border-black/6 pt-4 text-[11px] text-black/40">{d[3]}</div></div>)}</div></>}
+        <main className="mx-auto max-w-[1500px] px-5 py-8 md:px-8 lg:px-10 lg:py-10">
+          {section === "Overview" && (
+            <Overview
+              orders={orders}
+              products={products}
+              onNavigate={setSection}
+            />
+          )}
+          {section === "Orders" && (
+            <OrdersView
+              orders={visibleOrders}
+              filter={filter}
+              setFilter={setFilter}
+              updateOrder={updateOrder}
+            />
+          )}
+          {section === "Products" && (
+            <ProductsView
+              products={products.filter((p) =>
+                p.name.toLowerCase().includes(query.toLowerCase()),
+              )}
+              setProducts={setProducts}
+              token={token}
+              openCreate={() => {
+                setEditingProduct(null);
+                setShowProduct(true);
+              }}
+              openEdit={(product) => {
+                setEditingProduct(product);
+                setShowProduct(true);
+              }}
+              notify={notify}
+            />
+          )}
+          {section === "Customers" && <CustomersView />}
+          {section === "Discounts" && <DiscountsView notify={notify} />}
+        </main>
+      </div>
+      {showProduct && (
+        <ProductModal
+          product={editingProduct}
+          categories={categories}
+          close={() => {
+            setShowProduct(false);
+            setEditingProduct(null);
+          }}
+          save={saveProduct}
+          createCategory={createCategory}
+          notify={notify}
+        />
+      )}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[70] rounded-xl bg-[#1f2b25] px-5 py-3 text-sm text-white shadow-2xl">
+          <span className="mr-2 text-[#d3b47b]">●</span>
+          {toast}
+        </div>
+      )}
+    </div>
+  );
+}
 
-function ProductModal({close,save}:{close:()=>void;save:(p:typeof productsSeed[number])=>void}){const [name,setName]=useState('');const [category,setCategory]=useState('Rings');const [price,setPrice]=useState('');const [stock,setStock]=useState('');const submit=(e:React.FormEvent)=>{e.preventDefault();const n=Number(stock)||0;save({name:name||'Untitled product',sku:`${category.slice(0,3).toUpperCase()}-${Date.now().toString().slice(-5)}`,category,price:Number(price)||0,stock:n,status:n===0?'Out of stock':n<10?'Low stock':'Active',tone:'from-[#c9aa6a] to-[#efe0b8]'});};return <div className="fixed inset-0 z-[60] grid place-items-center bg-[#17201b]/55 p-4 backdrop-blur-sm"><form onSubmit={submit} className="w-full max-w-lg rounded-2xl bg-[#faf9f6] p-7 shadow-2xl"><div className="flex items-start justify-between"><div><h2 className="font-serif text-2xl">Add a new product</h2><p className="mt-1 text-xs text-black/40">Create a catalog item and set its opening stock.</p></div><button type="button" onClick={close}><X size={20}/></button></div><div className="mt-7 space-y-4"><label className="block text-xs font-semibold">Product name<input autoFocus value={name} onChange={e=>setName(e.target.value)} className="mt-2 h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-normal outline-none focus:border-[#667d6b]" placeholder="e.g. Hammered Gold Ring" required/></label><div className="grid grid-cols-2 gap-4"><label className="block text-xs font-semibold">Category<select value={category} onChange={e=>setCategory(e.target.value)} className="mt-2 h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-normal"><option>Rings</option><option>Necklaces</option><option>Earrings</option><option>Bracelets</option></select></label><label className="block text-xs font-semibold">Price (EGP)<input type="number" min="0" value={price} onChange={e=>setPrice(e.target.value)} className="mt-2 h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-normal" required/></label></div><label className="block text-xs font-semibold">Opening stock<input type="number" min="0" value={stock} onChange={e=>setStock(e.target.value)} className="mt-2 h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-normal" required/></label></div><div className="mt-8 flex justify-end gap-3"><button type="button" onClick={close} className="rounded-lg border border-black/10 px-5 py-2.5 text-xs font-semibold">Cancel</button><button className="rounded-lg bg-[#24352c] px-5 py-2.5 text-xs font-semibold text-white">Add product</button></div></form></div>}
+function Heading({
+  title,
+  copy,
+  action,
+}: {
+  title: string;
+  copy: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <div className="mb-2 text-[10px] font-bold uppercase tracking-[.2em] text-[#8d7450]">
+          Aura administration
+        </div>
+        <h1 className="font-serif text-3xl md:text-[40px]">{title}</h1>
+        <p className="mt-2 text-sm text-black/45">{copy}</p>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function Overview({
+  orders,
+  products,
+  onNavigate,
+}: {
+  orders: typeof ordersSeed;
+  products: typeof productsSeed;
+  onNavigate: (s: Section) => void;
+}) {
+  const cards = [
+    {
+      label: "Net revenue",
+      value: "EGP 128.4K",
+      change: "+12.5%",
+      icon: CreditCard,
+    },
+    { label: "Orders", value: "386", change: "+8.2%", icon: ShoppingBag },
+    { label: "Customers", value: "1,248", change: "+18.1%", icon: Users },
+    {
+      label: "Avg. order value",
+      value: "EGP 1,842",
+      change: "+4.6%",
+      icon: TrendingUp,
+    },
+  ];
+  return (
+    <>
+      <Heading
+        title="Good morning, Hadeer"
+        copy="Here’s what’s happening with your store today."
+        action={
+          <button
+            onClick={() => onNavigate("Products")}
+            className="flex h-11 items-center gap-2 rounded-lg bg-[#24352c] px-4 text-xs font-semibold text-white hover:bg-[#31483c]"
+          >
+            <Plus size={16} /> Add product
+          </button>
+        }
+      />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {cards.map(({ label, value, change, icon: Icon }) => (
+          <div
+            key={label}
+            className="rounded-2xl border border-black/7 bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,.02)]"
+          >
+            <div className="flex items-start justify-between">
+              <div className="grid size-10 place-items-center rounded-xl bg-[#edf0eb] text-[#506252]">
+                <Icon size={18} />
+              </div>
+              <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">
+                {change}
+              </span>
+            </div>
+            <div className="mt-5 text-xs text-black/42">{label}</div>
+            <div className="mt-1 text-2xl font-semibold tracking-tight">
+              {value}
+            </div>
+            <div className="mt-2 text-[10px] text-black/35">
+              vs. previous 30 days
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-5 grid gap-5 xl:grid-cols-[1.55fr_1fr]">
+        <div className="rounded-2xl border border-black/7 bg-white p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-serif text-xl">Revenue overview</h2>
+              <p className="mt-1 text-[11px] text-black/40">
+                Revenue across the last 7 months
+              </p>
+            </div>
+            <button className="flex items-center gap-2 rounded-lg border border-black/8 px-3 py-2 text-[11px]">
+              Last 7 months <ChevronDown size={13} />
+            </button>
+          </div>
+          <div className="mt-8 flex h-52 items-end gap-3 border-b border-black/8">
+            {[44, 58, 50, 72, 66, 84, 78, 94, 88, 108, 102, 124, 118, 142].map(
+              (h, i) => (
+                <div
+                  key={i}
+                  className="group relative flex h-full flex-1 items-end"
+                >
+                  <div
+                    style={{ height: `${h}px` }}
+                    className={`w-full rounded-t-sm ${i === 13 ? "bg-[#c49b5d]" : "bg-[#2c4035]/85"} transition hover:bg-[#c49b5d]`}
+                  />
+                </div>
+              ),
+            )}
+          </div>
+          <div className="mt-3 flex justify-between text-[10px] text-black/35">
+            <span>Jan</span>
+            <span>Feb</span>
+            <span>Mar</span>
+            <span>Apr</span>
+            <span>May</span>
+            <span>Jun</span>
+            <span>Jul</span>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-black/7 bg-[#26372f] p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-serif text-xl">Sales by category</h2>
+              <p className="mt-1 text-[11px] text-white/40">
+                Based on total revenue
+              </p>
+            </div>
+            <MoreHorizontal size={18} className="text-white/40" />
+          </div>
+          <div
+            className="mx-auto my-6 grid size-40 place-items-center rounded-full"
+            style={{
+              background:
+                "conic-gradient(#d1aa6a 0 38%, #899b88 38% 65%, #d9d2c5 65% 83%, #68796e 83%)",
+            }}
+          >
+            <div className="grid size-24 place-items-center rounded-full bg-[#26372f] text-center">
+              <div>
+                <div className="text-[10px] text-white/45">Total sales</div>
+                <div className="mt-1 text-lg font-semibold">EGP 128K</div>
+              </div>
+            </div>
+          </div>
+          {[
+            ["Rings", "38%", "#d1aa6a"],
+            ["Necklaces", "27%", "#899b88"],
+            ["Earrings", "18%", "#d9d2c5"],
+            ["Bracelets", "17%", "#68796e"],
+          ].map((x) => (
+            <div key={x[0]} className="mb-3 flex items-center text-xs">
+              <span
+                className="mr-2 size-2 rounded-full"
+                style={{ background: x[2] }}
+              />
+              <span className="text-white/65">{x[0]}</span>
+              <span className="ml-auto font-semibold">{x[1]}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-5 grid gap-5 xl:grid-cols-[1.55fr_1fr]">
+        <div className="overflow-hidden rounded-2xl border border-black/7 bg-white">
+          <div className="flex items-center justify-between p-6">
+            <div>
+              <h2 className="font-serif text-xl">Recent orders</h2>
+              <p className="mt-1 text-[11px] text-black/40">
+                Latest purchases from your store
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate("Orders")}
+              className="flex items-center gap-1 text-xs font-semibold text-[#526956]"
+            >
+              View all <ChevronRight size={14} />
+            </button>
+          </div>
+          <OrderTable orders={orders.slice(0, 4)} />
+        </div>
+        <div className="rounded-2xl border border-black/7 bg-white p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-serif text-xl">Inventory alerts</h2>
+            <button
+              onClick={() => onNavigate("Products")}
+              className="text-xs font-semibold text-[#526956]"
+            >
+              View inventory
+            </button>
+          </div>
+          <div className="mt-5 space-y-5">
+            {products.slice(1, 4).map((p) => (
+              <div key={p.name} className="flex items-center gap-3">
+                <div
+                  className={`size-12 rounded-lg bg-gradient-to-br ${p.tone}`}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-xs font-semibold">{p.name}</div>
+                  <div className="mt-1 text-[10px] text-black/40">{p.sku}</div>
+                </div>
+                <div
+                  className={`text-right text-xs font-bold ${p.stock === 0 ? "text-rose-600" : "text-amber-600"}`}
+                >
+                  {p.stock}
+                  <div className="text-[9px] font-normal text-black/35">
+                    in stock
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => onNavigate("Products")}
+            className="mt-6 w-full rounded-lg border border-black/8 py-2.5 text-xs font-semibold hover:bg-black/[.02]"
+          >
+            Manage inventory
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function OrderTable({
+  orders,
+  editable,
+  updateOrder,
+}: {
+  orders: typeof ordersSeed;
+  editable?: boolean;
+  updateOrder?: (id: string, status: OrderStatus) => void;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[700px] text-left">
+        <thead>
+          <tr className="border-y border-black/6 bg-[#faf9f6] text-[9px] uppercase tracking-[.13em] text-black/38">
+            <th className="px-6 py-3 font-semibold">Order</th>
+            <th className="px-4 py-3 font-semibold">Customer</th>
+            <th className="px-4 py-3 font-semibold">Date</th>
+            <th className="px-4 py-3 font-semibold">Total</th>
+            <th className="px-4 py-3 font-semibold">Status</th>
+            <th className="px-4 py-3" />
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((o) => (
+            <tr
+              key={o.id}
+              className="border-b border-black/5 text-xs last:border-0 hover:bg-[#fbfaf7]"
+            >
+              <td className="px-6 py-4 font-bold">
+                {o.id}
+                <div className="mt-1 text-[9px] font-normal text-black/35">
+                  {o.items} items
+                </div>
+              </td>
+              <td className="px-4 py-4">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={`grid size-8 place-items-center rounded-full ${o.color} text-[10px] font-bold`}
+                  >
+                    {o.initials}
+                  </div>
+                  {o.customer}
+                </div>
+              </td>
+              <td className="px-4 py-4 text-black/48">{o.date}</td>
+              <td className="px-4 py-4 font-semibold">{money(o.total)}</td>
+              <td className="px-4 py-4">
+                {editable ? (
+                  <select
+                    value={o.status}
+                    onChange={(e) =>
+                      updateOrder?.(o.id, e.target.value as OrderStatus)
+                    }
+                    className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-[11px] outline-none"
+                  >
+                    <option>Processing</option>
+                    <option>Shipped</option>
+                    <option>Delivered</option>
+                    <option>Cancelled</option>
+                  </select>
+                ) : (
+                  <Status value={o.status} />
+                )}
+              </td>
+              <td className="px-4 py-4">
+                <button>
+                  <MoreHorizontal size={16} />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function OrdersView({
+  orders,
+  filter,
+  setFilter,
+  updateOrder,
+}: {
+  orders: typeof ordersSeed;
+  filter: string;
+  setFilter: (v: string) => void;
+  updateOrder: (id: string, s: OrderStatus) => void;
+}) {
+  return (
+    <>
+      <Heading
+        title="Orders"
+        copy="Track, fulfill, and manage every customer order."
+        action={
+          <button className="rounded-lg border border-black/10 bg-white px-4 py-2.5 text-xs font-semibold">
+            Export orders
+          </button>
+        }
+      />
+      <div className="mb-4 flex gap-2 overflow-x-auto">
+        {["All", "Processing", "Shipped", "Delivered", "Cancelled"].map((x) => (
+          <button
+            key={x}
+            onClick={() => setFilter(x)}
+            className={`rounded-full px-4 py-2 text-xs ${filter === x ? "bg-[#26372f] text-white" : "border border-black/8 bg-white text-black/55"}`}
+          >
+            {x}
+          </button>
+        ))}
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-black/7 bg-white">
+        <OrderTable orders={orders} editable updateOrder={updateOrder} />
+        {orders.length === 0 && (
+          <div className="p-12 text-center text-sm text-black/40">
+            No matching orders found.
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+function ProductsView({
+  products,
+  setProducts,
+  token,
+  openCreate,
+  openEdit,
+  notify,
+}: {
+  products: AdminProduct[];
+  setProducts: React.Dispatch<React.SetStateAction<AdminProduct[]>>;
+  token: string;
+  openCreate: () => void;
+  openEdit: (product: AdminProduct) => void;
+  notify: (s: string) => void;
+}) {
+  const change = async (product: AdminProduct, delta: number) => {
+    if (!product.backendId) return;
+    const stock = Math.max(0, product.stock + delta);
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+    try {
+      const response = await fetch(`${base}/products/${product.backendId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ stock }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error);
+      const saved = productFromApi(body.data);
+      setProducts((items) =>
+        items.map((item) =>
+          item.backendId === saved.backendId ? saved : item,
+        ),
+      );
+      notify("Inventory updated");
+    } catch {
+      notify("Could not update inventory");
+    }
+  };
+  return (
+    <>
+      <Heading
+        title="Products & inventory"
+        copy="Create products, adjust stock, and organize your catalog."
+        action={
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-2 rounded-lg bg-[#24352c] px-4 py-3 text-xs font-semibold text-white"
+          >
+            <Plus size={16} /> Add product
+          </button>
+        }
+      />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <MiniStat
+          icon={Package}
+          label="Total products"
+          value={String(products.length)}
+        />
+        <MiniStat
+          icon={Boxes}
+          label="Low stock"
+          value={String(
+            products.filter((product) => product.stock < 10).length,
+          )}
+        />
+        <MiniStat
+          icon={Sparkles}
+          label="In stock"
+          value={String(products.filter((product) => product.stock > 0).length)}
+        />
+      </div>
+      <div className="mt-5 overflow-hidden rounded-2xl border border-black/7 bg-white">
+        <div className="border-b border-black/6 p-5 text-sm font-semibold">
+          All products
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left">
+            <thead className="bg-[#faf9f6] text-[9px] uppercase tracking-widest text-black/40">
+              <tr>
+                <th className="px-5 py-3">Product</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Inventory</th>
+                <th>Status</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((p) => (
+                <tr
+                  key={p.backendId ?? p.sku}
+                  className="border-t border-black/5 text-xs"
+                >
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`size-12 rounded-lg bg-gradient-to-br ${p.tone}`}
+                      />
+                      <div>
+                        <div className="font-semibold">{p.name}</div>
+                        <div className="mt-1 text-[10px] text-black/38">
+                          {p.sku}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="text-black/52">{p.category}</td>
+                  <td className="font-semibold">{money(p.price)}</td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => void change(p, -1)}
+                        className="grid size-7 place-items-center rounded border border-black/10"
+                      >
+                        −
+                      </button>
+                      <span className="w-5 text-center font-semibold">
+                        {p.stock}
+                      </span>
+                      <button
+                        onClick={() => void change(p, 1)}
+                        className="grid size-7 place-items-center rounded border border-black/10"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <Status value={p.status} />
+                  </td>
+                  <td>
+                    <button
+                      onClick={() => openEdit(p)}
+                      aria-label={`Edit ${p.name}`}
+                      className="rounded-lg p-2 hover:bg-black/5"
+                    >
+                      <MoreHorizontal size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function MiniStat({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Package;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-4 rounded-2xl border border-black/7 bg-white p-5">
+      <div className="grid size-11 place-items-center rounded-xl bg-[#edf0eb] text-[#536858]">
+        <Icon size={19} />
+      </div>
+      <div>
+        <div className="text-xl font-bold">{value}</div>
+        <div className="text-[11px] text-black/40">{label}</div>
+      </div>
+    </div>
+  );
+}
+
+function CustomersView() {
+  const people = [
+    [
+      "Mariam Hassan",
+      "mariam.hassan@email.com",
+      "12",
+      "EGP 18,420",
+      "18 Jul 2026",
+    ],
+    ["Nour El Din", "nour.eldin@email.com", "8", "EGP 12,680", "18 Jul 2026"],
+    ["Salma Adel", "salma.adel@email.com", "15", "EGP 26,140", "17 Jul 2026"],
+    ["Omar Khaled", "omar.k@email.com", "4", "EGP 6,820", "17 Jul 2026"],
+  ];
+  return (
+    <>
+      <Heading
+        title="Customers"
+        copy="Understand and support the people who shop with Aura."
+      />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <MiniStat icon={Users} label="Total customers" value="1,248" />
+        <MiniStat icon={TrendingUp} label="Returning rate" value="42.8%" />
+        <MiniStat icon={Gift} label="VIP customers" value="86" />
+      </div>
+      <div className="mt-5 overflow-hidden rounded-2xl border border-black/7 bg-white">
+        <table className="w-full min-w-[650px] text-left text-xs">
+          <thead className="bg-[#faf9f6] text-[9px] uppercase tracking-widest text-black/40">
+            <tr>
+              <th className="px-6 py-4">Customer</th>
+              <th>Orders</th>
+              <th>Total spent</th>
+              <th>Last order</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {people.map((p) => (
+              <tr key={p[1]} className="border-t border-black/5">
+                <td className="px-6 py-4">
+                  <div className="font-semibold">{p[0]}</div>
+                  <div className="mt-1 text-[10px] text-black/38">{p[1]}</div>
+                </td>
+                <td>{p[2]}</td>
+                <td className="font-semibold">{p[3]}</td>
+                <td className="text-black/45">{p[4]}</td>
+                <td>
+                  <MoreHorizontal size={16} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function DiscountsView({ notify }: { notify: (s: string) => void }) {
+  const [active, setActive] = useState([true, true, false]);
+  const deals = [
+    ["SUMMER20", "20% off", "Orders over EGP 1,500", "284 uses"],
+    ["WELCOME10", "10% off", "First order only", "92 uses"],
+    ["FREESHIP", "Free shipping", "Orders over EGP 2,000", "Inactive"],
+  ];
+  return (
+    <>
+      <Heading
+        title="Discounts"
+        copy="Create offers that turn browsers into loyal customers."
+        action={
+          <button
+            onClick={() => notify("New discount draft created")}
+            className="flex items-center gap-2 rounded-lg bg-[#24352c] px-4 py-3 text-xs font-semibold text-white"
+          >
+            <Plus size={16} /> Create discount
+          </button>
+        }
+      />
+      <div className="grid gap-4 lg:grid-cols-3">
+        {deals.map((d, i) => (
+          <div
+            key={d[0]}
+            className="rounded-2xl border border-black/7 bg-white p-6"
+          >
+            <div className="flex items-start justify-between">
+              <div className="grid size-10 place-items-center rounded-xl bg-[#f3ebdc] text-[#9a733d]">
+                <Tag size={18} />
+              </div>
+              <button
+                onClick={() =>
+                  setActive((v) => v.map((x, j) => (i === j ? !x : x)))
+                }
+                className={`relative h-6 w-11 rounded-full transition ${active[i] ? "bg-[#385243]" : "bg-black/15"}`}
+              >
+                <span
+                  className={`absolute top-1 size-4 rounded-full bg-white transition ${active[i] ? "left-6" : "left-1"}`}
+                />
+              </button>
+            </div>
+            <div className="mt-6 font-mono text-lg font-bold tracking-wider">
+              {d[0]}
+            </div>
+            <div className="mt-2 text-sm font-semibold">{d[1]}</div>
+            <div className="mt-1 text-xs text-black/42">{d[2]}</div>
+            <div className="mt-6 border-t border-black/6 pt-4 text-[11px] text-black/40">
+              {d[3]}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function ProductModal({
+  product,
+  categories,
+  close,
+  save,
+  createCategory,
+  notify,
+}: {
+  product: AdminProduct | null;
+  categories: AdminCategory[];
+  close: () => void;
+  save: (p: AdminProduct) => Promise<void>;
+  createCategory: (name: string) => Promise<AdminCategory>;
+  notify: (message: string) => void;
+}) {
+  const [name, setName] = useState(product?.name ?? "");
+  const [sku, setSku] = useState(product?.sku ?? "");
+  const [categoryId, setCategoryId] = useState(product?.categoryId ?? "");
+  const [price, setPrice] = useState(product ? String(product.price) : "");
+  const [stock, setStock] = useState(product ? String(product.stock) : "");
+  const [newCategory, setNewCategory] = useState("");
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    const amount = Number(stock) || 0;
+    const category = categories.find((item) => item.id === categoryId);
+    try {
+      await save({
+        backendId: product?.backendId,
+        name: name.trim(),
+        sku: sku.trim() || `PRD-${Date.now().toString().slice(-6)}`,
+        categoryId: categoryId || undefined,
+        category: category?.nameEn ?? "Uncategorized",
+        price: Number(price) || 0,
+        stock: amount,
+        status:
+          amount === 0 ? "Out of stock" : amount < 10 ? "Low stock" : "Active",
+        tone: product?.tone ?? "from-[#c9aa6a] to-[#efe0b8]",
+      });
+    } catch (cause) {
+      notify(
+        cause instanceof Error ? cause.message : "Could not save the product",
+      );
+      setSaving(false);
+    }
+  };
+  const addCategory = async () => {
+    const value = newCategory.trim();
+    if (!value) return;
+    setAddingCategory(true);
+    try {
+      const category = await createCategory(value);
+      setCategoryId(category.id);
+      setNewCategory("");
+      notify("Category created");
+    } catch (cause) {
+      notify(
+        cause instanceof Error ? cause.message : "Could not create category",
+      );
+    } finally {
+      setAddingCategory(false);
+    }
+  };
+  return (
+    <div className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-[#17201b]/55 p-4 backdrop-blur-sm">
+      <form
+        onSubmit={submit}
+        className="w-full max-w-lg rounded-2xl bg-[#faf9f6] p-7 shadow-2xl"
+      >
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="font-serif text-2xl">
+              {product ? "Edit product" : "Add a new product"}
+            </h2>
+            <p className="mt-1 text-xs text-black/40">
+              {product
+                ? "Update its catalog details, category, and inventory."
+                : "Create a catalog item and set its opening stock."}
+            </p>
+          </div>
+          <button type="button" onClick={close}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="mt-7 space-y-4">
+          <label className="block text-xs font-semibold">
+            Product name
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-2 h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-normal outline-none focus:border-[#667d6b]"
+              placeholder="e.g. Hammered Gold Ring"
+              required
+            />
+          </label>
+          <label className="block text-xs font-semibold">
+            SKU
+            <input
+              value={sku}
+              onChange={(e) => setSku(e.target.value)}
+              className="mt-2 h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-normal outline-none focus:border-[#667d6b]"
+              placeholder="Generated automatically if empty"
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="block text-xs font-semibold">
+              Category
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="mt-2 h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-normal"
+              >
+                <option value="">Uncategorized</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.nameEn}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs font-semibold">
+              Price (EGP)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="mt-2 h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-normal"
+                required
+              />
+            </label>
+          </div>
+          <div>
+            <div className="text-xs font-semibold">Create a category</div>
+            <div className="mt-2 flex gap-2">
+              <input
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                className="h-10 min-w-0 flex-1 rounded-lg border border-black/10 bg-white px-3 text-xs font-normal"
+                placeholder="e.g. Rings"
+              />
+              <button
+                type="button"
+                disabled={addingCategory || !newCategory.trim()}
+                onClick={() => void addCategory()}
+                className="rounded-lg border border-black/10 px-4 text-xs font-semibold disabled:opacity-40"
+              >
+                {addingCategory ? "Adding…" : "Add"}
+              </button>
+            </div>
+          </div>
+          <label className="block text-xs font-semibold">
+            Stock
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+              className="mt-2 h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-normal"
+              required
+            />
+          </label>
+        </div>
+        <div className="mt-8 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={close}
+            className="rounded-lg border border-black/10 px-5 py-2.5 text-xs font-semibold"
+          >
+            Cancel
+          </button>
+          <button
+            disabled={saving}
+            className="rounded-lg bg-[#24352c] px-5 py-2.5 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            {saving ? "Saving…" : product ? "Save changes" : "Add product"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}

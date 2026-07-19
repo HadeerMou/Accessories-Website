@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { OrderStatus, PaymentStatus } from "../../generated/prisma/enums.js";
 import { HttpError } from "../../lib/http-error.js";
-import { createOrder, getOrder, listOrders, updateOrder } from "./orders.service.js";
+import { checkoutCart, createOrder, getOrder, listOrders, updateOrder } from "./orders.service.js";
 import { type AuthRequest } from "../auth/auth.middleware.js";
 import { UserRole } from "../../generated/prisma/enums.js";
 
@@ -52,4 +52,9 @@ export async function putOrder(request: Request, response: Response, next: NextF
     };
     response.json({ data: await updateOrder(routeParam(request.params.orderId, "order id"), input) });
   } catch (error) { handle(error, response, next); }
+}
+
+export async function checkout(request: Request, response: Response, next: NextFunction) {
+  try { response.status(201).json({ data: await checkoutCart((request as AuthRequest).auth!.sub, request.body) }); }
+  catch (error) { handle(error, response, next); }
 }

@@ -2,12 +2,30 @@ import type { Prisma } from "../../generated/prisma/client.js";
 import { ProductStatus } from "../../generated/prisma/enums.js";
 import { HttpError } from "../../lib/http-error.js";
 import { ProductRepository } from "./products.repository.js";
-import type { CreateProductInput, ProductFilters, UpdateProductInput } from "./products.types.js";
+import type {
+  CreateProductInput,
+  ProductFilters,
+  ProductImageInput,
+  ProductVariantInput,
+  UpdateProductInput,
+} from "./products.types.js";
 
 const repository = new ProductRepository();
 const clean = (value: string | null | undefined) => value?.trim() || null;
+const imageData = (image: ProductImageInput) => ({
+  imageUrl: image.imageUrl.trim(),
+  altText: clean(image.altText),
+  isPrimary: image.isPrimary ?? false,
+  ...(image.sortOrder !== undefined ? { sortOrder: image.sortOrder } : {}),
+});
+const variantData = (variant: ProductVariantInput) => ({
+  color: clean(variant.color), size: clean(variant.size), material: clean(variant.material),
+  stock: variant.stock ?? 0, price: variant.price ?? null, sku: clean(variant.sku),
+});
 
 function validateNestedInput(input: CreateProductInput | UpdateProductInput) {
+  if (input.images !== undefined && !Array.isArray(input.images)) throw new HttpError(400, "images must be an array");
+  if (input.variants !== undefined && !Array.isArray(input.variants)) throw new HttpError(400, "variants must be an array");
   for (const [index, image] of (input.images ?? []).entries()) {
     if (!image.imageUrl?.trim()) throw new HttpError(400, `images[${index}].imageUrl is required`);
     if (image.sortOrder !== undefined && !Number.isInteger(image.sortOrder)) throw new HttpError(400, `images[${index}].sortOrder must be an integer`);
@@ -21,12 +39,13 @@ function validateNestedInput(input: CreateProductInput | UpdateProductInput) {
   if (new Set(variantSkus).size !== variantSkus.length) throw new HttpError(400, "Variant SKUs must be unique");
 }
 
-function validate(input: CreateProductInput | UpdateProductInput, currentPrice?: number) {
+function validate(input: CreateProductInput | UpdateProductInput, currentPrice?: number, currentDiscount?: number | null) {
   if (input.nameEn !== undefined && !input.nameEn.trim()) throw new HttpError(400, "nameEn cannot be empty");
   if (input.nameAr !== undefined && !input.nameAr.trim()) throw new HttpError(400, "nameAr cannot be empty");
   if (input.price !== undefined && (!Number.isFinite(input.price) || input.price < 0)) throw new HttpError(400, "price must be a non-negative number");
   const effectivePrice = input.price ?? currentPrice;
-  if (input.discountPrice !== undefined && input.discountPrice !== null && (!Number.isFinite(input.discountPrice) || input.discountPrice < 0 || (effectivePrice !== undefined && input.discountPrice >= effectivePrice))) throw new HttpError(400, "discountPrice must be non-negative and lower than price");
+  const effectiveDiscount = input.discountPrice !== undefined ? input.discountPrice : currentDiscount;
+  if (effectiveDiscount !== undefined && effectiveDiscount !== null && (!Number.isFinite(effectiveDiscount) || effectiveDiscount < 0 || (effectivePrice !== undefined && effectiveDiscount >= effectivePrice))) throw new HttpError(400, "discountPrice must be non-negative and lower than price");
   if (input.stock !== undefined && (!Number.isInteger(input.stock) || input.stock < 0)) throw new HttpError(400, "stock must be a non-negative integer");
   if (input.status !== undefined && !Object.values(ProductStatus).includes(input.status)) throw new HttpError(400, "Invalid product status");
   validateNestedInput(input);
@@ -68,15 +87,15 @@ export async function createProduct(input: CreateProductInput) {
     descriptionEn: clean(input.descriptionEn), descriptionAr: clean(input.descriptionAr),
     discountPrice: input.discountPrice ?? null, featured: input.featured ?? false,
     sku: clean(input.sku), hasVariants: input.hasVariants ?? Boolean(input.variants?.length),
-    images: input.images?.length ? { create: input.images.map((image) => ({ ...image, imageUrl: image.imageUrl.trim() })) } : undefined,
-    variants: input.variants?.length ? { create: input.variants } : undefined,
+    images: input.images?.length ? { create: input.images.map(imageData) } : undefined,
+    variants: input.variants?.length ? { create: input.variants.map(variantData) } : undefined,
   });
 }
 
 export async function updateProduct(id: string, input: UpdateProductInput) {
   if (!input || !Object.keys(input).length) throw new HttpError(400, "No product fields were provided");
   const current = await getProduct(id);
-  validate(input, Number(current.price));
+  validate(input, Number(current.price), current.discountPrice === null ? null : Number(current.discountPrice));
   await validateRelationsAndUniqueness(input, id);
   const data: Prisma.ProductUpdateInput = {
     ...(input.nameEn !== undefined ? { nameEn: input.nameEn.trim() } : {}),
@@ -93,8 +112,8 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
     ...(input.sku !== undefined ? { sku: clean(input.sku) } : {}),
     ...(input.hasVariants !== undefined ? { hasVariants: input.hasVariants } : {}),
     ...(input.categoryId !== undefined ? { category: input.categoryId ? { connect: { id: input.categoryId } } : { disconnect: true } } : {}),
-    ...(input.images !== undefined ? { images: { deleteMany: {}, create: input.images.map((image) => ({ ...image, imageUrl: image.imageUrl.trim() })) } } : {}),
-    ...(input.variants !== undefined ? { variants: { deleteMany: {}, create: input.variants } } : {}),
+    ...(input.images !== undefined ? { images: { deleteMany: {}, create: input.images.map(imageData) } } : {}),
+    ...(input.variants !== undefined ? { variants: { deleteMany: {}, create: input.variants.map(variantData) } } : {}),
   };
   return repository.update(id, data);
 }

@@ -17,6 +17,7 @@ export async function hashPassword(password: string) {
 export async function verifyPassword(password: string, storedHash: string) {
   const [algorithm, salt, hash] = storedHash.split(":");
   if (algorithm !== "scrypt" || !salt || !hash) return false;
+  if (!/^[a-f\d]{128}$/i.test(hash)) return false;
   const stored = Buffer.from(hash, "hex");
   const supplied = (await scrypt(password, salt, stored.length)) as Buffer;
   return timingSafeEqual(stored, supplied);
@@ -31,8 +32,8 @@ function validatePassword(password: string) {
 }
 
 export async function listUsers(filters: UserFilters) {
-  const page = Number.isFinite(filters.page) && filters.page > 0 ? filters.page : 1;
-  const limit = Number.isFinite(filters.limit) && filters.limit > 0 ? Math.min(filters.limit, 50) : 10;
+  const page = Number.isFinite(filters.page) && filters.page > 0 ? Math.floor(filters.page) : 1;
+  const limit = Number.isFinite(filters.limit) && filters.limit > 0 ? Math.min(Math.floor(filters.limit), 50) : 10;
   const result = await repository.list({ ...filters, page, limit, search: filters.search?.trim() || undefined });
   return { ...result, page, limit, pages: Math.ceil(result.total / limit) };
 }

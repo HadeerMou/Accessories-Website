@@ -1,13 +1,20 @@
 import { Router } from "express";
-import { getProducts, createProduct, getProduct, updateProduct, deleteProduct } from "./products.controller.js";
 import { requireAdmin, requireAuth } from "../auth/auth.middleware.js";
+import {
+  createProduct,
+  deleteProduct,
+  getProductById,
+  listProducts,
+  replaceProduct,
+  updateProduct,
+} from "./products.controller.js";
 
 export const productsRouter = Router();
 
-productsRouter.get("/", getProducts);
-productsRouter.post("/", requireAuth, requireAdmin, createProduct);
+productsRouter.get("/", listProducts);
+productsRouter.get("/:productId", getProductById);
 
-productsRouter.get("/:productId", getProduct);
-productsRouter.put("/:productId", requireAuth, requireAdmin, updateProduct);
+productsRouter.post("/", requireAuth, requireAdmin, createProduct);
+productsRouter.put("/:productId", requireAuth, requireAdmin, replaceProduct);
 productsRouter.patch("/:productId", requireAuth, requireAdmin, updateProduct);
 productsRouter.delete("/:productId", requireAuth, requireAdmin, deleteProduct);

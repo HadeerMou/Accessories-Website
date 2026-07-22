@@ -8,6 +8,7 @@ import { cartRouter } from "../modules/cart/cart.routes.js";
 import { paymentsRouter } from "../modules/payments/payments.routes.js";
 import { adminRouter } from "../modules/admin/admin.routes.js";
 import { addressesRouter } from "../modules/addresses/addresses.routes.js";
+import { discountsRouter } from "../modules/discounts/discounts.routes.js";
 
 export const apiRouter = Router();
 
@@ -24,3 +25,4 @@ apiRouter.use("/admin", adminRouter);
 apiRouter.use("/addresses", addressesRouter);
 apiRouter.use("/users", usersRouter);
 apiRouter.use("/orders", ordersRouter);
+apiRouter.use("/discounts", discountsRouter);

@@ -10,6 +10,11 @@ export const app = express();
 app.disable("x-powered-by");
 app.use(cors({ origin: env.corsOrigin }));
 app.use(express.json({ limit: "1mb" }));
+
+app.get("/", (_request, response) => {
+  response.json({ status: "ok", service: "aura-backend", docs: "/api/health" });
+});
+
 app.use("/api", apiRouter);
 
 app.use((_request, response) => {

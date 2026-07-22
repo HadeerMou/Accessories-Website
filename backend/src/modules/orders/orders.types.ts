@@ -35,4 +35,5 @@ export interface CheckoutInput {
   street: string;
   apartment?: string | null;
   postalCode?: string | null;
+  couponCode?: string | null;
 }

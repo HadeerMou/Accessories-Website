@@ -41,6 +41,7 @@ export default function CheckoutPage() {
     street: "",
     apartment: "",
     postalCode: "",
+    couponCode: "",
   });
 
   useEffect(() => {
@@ -255,6 +256,20 @@ export default function CheckoutPage() {
                   ))}
                 </div>
                 <div className="mt-6 flex justify-between border-t border-white/15 pt-5 font-semibold">
+                  <span>Subtotal</span>
+                  <span>{total.toFixed(2)} EGP</span>
+                </div>
+                <label className="mt-5 block text-[10px] font-bold uppercase tracking-widest text-white/60">
+                  Discount code
+                  <input
+                    value={form.couponCode}
+                    onChange={(event) => change("couponCode", event.target.value.toUpperCase())}
+                    placeholder="WELCOME10"
+                    className="mt-2 h-11 w-full rounded-lg border border-white/20 bg-white/10 px-3 font-mono text-xs text-white outline-none placeholder:text-white/35 focus:border-[#d3b47b]"
+                  />
+                </label>
+                <p className="mt-2 text-[10px] leading-4 text-white/45">Your eligible discount will be applied when you place the order.</p>
+                <div className="mt-5 flex justify-between border-t border-white/15 pt-5 font-semibold">
                   <span>Total</span>
                   <span>{total.toFixed(2)} EGP</span>
                 </div>

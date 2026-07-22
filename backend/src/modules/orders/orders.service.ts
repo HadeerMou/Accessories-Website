@@ -1,4 +1,4 @@
-import { InventoryReason, OrderStatus, PaymentProvider, PaymentStatus, ProductStatus } from "../../generated/prisma/enums.js";
+import { DiscountType, InventoryReason, OrderStatus, PaymentProvider, PaymentStatus, ProductStatus } from "../../generated/prisma/enums.js";
 import { HttpError } from "../../lib/http-error.js";
 import { sendOrderConfirmation } from "../../lib/mailer.js";
 import { prisma } from "../../lib/prisma.js";
@@ -157,7 +157,21 @@ export async function checkoutCart(userId: string, input: CheckoutInput) {
     }
 
     subtotal = Number(subtotal.toFixed(2));
-    const created = await tx.order.create({ data: { userId, addressId: address.id, orderStatus: OrderStatus.CONFIRMED, paymentStatus: PaymentStatus.PENDING, subtotal, shipping: 0, discount: 0, total: subtotal, items: { create: items }, payments: { create: { provider: PaymentProvider.CASH_ON_DELIVERY, amount: subtotal, currency: "EGP", status: PaymentStatus.PENDING } } }, include: orderInclude });
+    let discountAmount = 0;
+    let appliedDiscount: { id: string; code: string } | null = null;
+    const couponCode = input.couponCode?.trim().toUpperCase();
+    if (couponCode) {
+      const discount = await tx.discount.findUnique({ where: { code: couponCode } });
+      const now = new Date();
+      if (!discount || !discount.isActive || (discount.startsAt && discount.startsAt > now) || (discount.endsAt && discount.endsAt < now) || (discount.usageLimit !== null && discount.usedCount >= discount.usageLimit)) throw new HttpError(400, "This discount code is not available");
+      if (discount.minimumSubtotal !== null && subtotal < Number(discount.minimumSubtotal)) throw new HttpError(400, `This code requires a minimum order of EGP ${Number(discount.minimumSubtotal).toFixed(0)}`);
+      discountAmount = discount.type === DiscountType.PERCENTAGE ? subtotal * (Number(discount.value) / 100) : Number(discount.value);
+      discountAmount = Number(Math.min(subtotal, discountAmount).toFixed(2));
+      await tx.discount.update({ where: { id: discount.id }, data: { usedCount: { increment: 1 }, updatedAt: now } });
+      appliedDiscount = { id: discount.id, code: discount.code };
+    }
+    const total = Number((subtotal - discountAmount).toFixed(2));
+    const created = await tx.order.create({ data: { userId, addressId: address.id, orderStatus: OrderStatus.CONFIRMED, paymentStatus: PaymentStatus.PENDING, subtotal, shipping: 0, discount: discountAmount, total, ...(appliedDiscount ? { discountId: appliedDiscount.id, discountCode: appliedDiscount.code } : {}), items: { create: items }, payments: { create: { provider: PaymentProvider.CASH_ON_DELIVERY, amount: total, currency: "EGP", status: PaymentStatus.PENDING } } }, include: orderInclude });
     await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
     return created;
   });

@@ -12,6 +12,7 @@ const publicUserSelect = {
   createdAt: true,
   updatedAt: true,
   addresses: { where: { deletedAt: null }, orderBy: { createdAt: "desc" as const } },
+  orders: { select: { total: true, createdAt: true }, orderBy: { createdAt: "desc" as const } },
 } satisfies Prisma.UserSelect;
 
 export class UsersRepository {

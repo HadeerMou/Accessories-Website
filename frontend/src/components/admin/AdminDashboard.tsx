@@ -31,6 +31,9 @@ type OrderStatus = "Processing" | "Shipped" | "Delivered" | "Cancelled";
 type ProductStatusLabel = "Active" | "Low stock" | "Out of stock";
 type AdminCategory = { id: string; nameEn: string };
 type AdminNotification = { id:string; type:"ORDER"|"USER"; title:string; message:string; createdAt:string|null };
+type AdminCustomer = { id: string; fullName: string; email: string; phone?: string | null; createdAt?: string | null; orders?: number; totalSpent?: number; lastOrder?: string | null };
+type AdminDiscount = { id: string; code: string; type: "PERCENTAGE" | "FIXED_AMOUNT"; value: string | number; minimumSubtotal?: string | number | null; startsAt?: string | null; endsAt?: string | null; usageLimit?: number | null; usedCount: number; isActive: boolean };
+type AdminOverview = { revenue: number; orders: number; customers: number; products: number; averageOrderValue: number };
 type AdminProduct = {
   backendId?: string;
   name: string;
@@ -38,6 +41,7 @@ type AdminProduct = {
   categoryId?: string;
   category: string;
   price: number;
+  discountPrice?: number | null;
   stock: number;
   status: ProductStatusLabel;
   tone: string;
@@ -53,6 +57,7 @@ const productFromApi = (value: Record<string, unknown>): AdminProduct => {
     categoryId: category?.id,
     category: category?.nameEn ?? "Uncategorized",
     price: Number(value.price),
+    discountPrice: value.discountPrice === null || value.discountPrice === undefined ? null : Number(value.discountPrice),
     stock,
     status: stock === 0 ? "Out of stock" : stock < 10 ? "Low stock" : "Active",
     tone: "from-[#c9aa6a] to-[#efe0b8]",
@@ -299,8 +304,11 @@ function Status({ value }: { value: string }) {
 export default function AdminDashboard() {
   const [section, setSection] = useState<Section>("Overview");
   const [mobileNav, setMobileNav] = useState(false);
-  const [orders, setOrders] = useState(ordersSeed);
-  const [products, setProducts] = useState(productsSeed);
+  const [orders, setOrders] = useState(ordersSeed.slice(0, 0));
+  const [products, setProducts] = useState(productsSeed.slice(0, 0));
+  const [customers, setCustomers] = useState<AdminCustomer[]>([]);
+  const [discounts, setDiscounts] = useState<AdminDiscount[]>([]);
+  const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
   const [showProduct, setShowProduct] = useState(false);
@@ -329,8 +337,11 @@ export default function AdminDashboard() {
       fetch(`${base}/products?limit=50`, { headers }),
       fetch(`${base}/orders?limit=50`, { headers }),
       fetch(`${base}/categories`, { headers }),
+      fetch(`${base}/users?role=CUSTOMER&limit=50`, { headers }),
+      fetch(`${base}/discounts`, { headers }),
+      fetch(`${base}/admin/overview`, { headers }),
     ])
-      .then(async ([productsResponse, ordersResponse, categoriesResponse]) => {
+      .then(async ([productsResponse, ordersResponse, categoriesResponse, customersResponse, discountsResponse, overviewResponse]) => {
         if (
           productsResponse.status === 401 ||
           productsResponse.status === 403 ||
@@ -383,6 +394,15 @@ export default function AdminDashboard() {
             })),
           );
         }
+        if (customersResponse.ok) {
+          const body = await customersResponse.json();
+          setCustomers(body.data.map((customer: Record<string, unknown>) => {
+            const customerOrders = Array.isArray(customer.orders) ? customer.orders as Array<{ total?: string | number; createdAt?: string | null }> : [];
+            return { id: String(customer.id), fullName: String(customer.fullName), email: String(customer.email), phone: typeof customer.phone === "string" ? customer.phone : null, createdAt: typeof customer.createdAt === "string" ? customer.createdAt : null, orders: customerOrders.length, totalSpent: customerOrders.reduce((sum, order) => sum + Number(order.total ?? 0), 0), lastOrder: customerOrders[0]?.createdAt ?? null };
+          }));
+        }
+        if (discountsResponse.ok) setDiscounts((await discountsResponse.json()).data);
+        if (overviewResponse.ok) setOverview((await overviewResponse.json()).data);
       })
       .catch(() => {
         setToast("Backend is unavailable — showing cached dashboard data");
@@ -467,6 +487,7 @@ export default function AdminDashboard() {
           nameAr: product.name,
           categoryId: product.categoryId || null,
           price: product.price,
+          discountPrice: product.discountPrice ?? null,
           stock: product.stock,
           sku: product.sku,
           status: "ACTIVE",
@@ -649,6 +670,7 @@ export default function AdminDashboard() {
             <Overview
               orders={orders}
               products={products}
+              overview={overview}
               onNavigate={setSection}
             />
           )}
@@ -678,8 +700,8 @@ export default function AdminDashboard() {
               notify={notify}
             />
           )}
-          {section === "Customers" && <CustomersView />}
-          {section === "Discounts" && <DiscountsView notify={notify} />}
+          {section === "Customers" && <CustomersView customers={customers} />}
+          {section === "Discounts" && <DiscountsView discounts={discounts} setDiscounts={setDiscounts} token={token} notify={notify} />}
         </main>
       </div>
       {showProduct && (
@@ -731,25 +753,27 @@ function Heading({
 function Overview({
   orders,
   products,
+  overview,
   onNavigate,
 }: {
   orders: typeof ordersSeed;
   products: typeof productsSeed;
+  overview: AdminOverview | null;
   onNavigate: (s: Section) => void;
 }) {
   const cards = [
     {
       label: "Net revenue",
-      value: "EGP 128.4K",
-      change: "+12.5%",
+      value: money(overview?.revenue ?? 0),
+      change: "Last 30 days",
       icon: CreditCard,
     },
-    { label: "Orders", value: "386", change: "+8.2%", icon: ShoppingBag },
-    { label: "Customers", value: "1,248", change: "+18.1%", icon: Users },
+    { label: "Orders", value: String(overview?.orders ?? orders.length), change: "Last 30 days", icon: ShoppingBag },
+    { label: "Customers", value: String(overview?.customers ?? 0), change: "All customers", icon: Users },
     {
       label: "Avg. order value",
-      value: "EGP 1,842",
-      change: "+4.6%",
+      value: money(overview?.averageOrderValue ?? 0),
+      change: "Last 30 days",
       icon: TrendingUp,
     },
   ];
@@ -834,7 +858,7 @@ function Overview({
             <div>
               <h2 className="font-serif text-xl">Sales by category</h2>
               <p className="mt-1 text-[11px] text-white/40">
-                Based on total revenue
+                Live catalog overview
               </p>
             </div>
             <MoreHorizontal size={18} className="text-white/40" />
@@ -849,7 +873,7 @@ function Overview({
             <div className="grid size-24 place-items-center rounded-full bg-[#26372f] text-center">
               <div>
                 <div className="text-[10px] text-white/45">Total sales</div>
-                <div className="mt-1 text-lg font-semibold">EGP 128K</div>
+                <div className="mt-1 text-lg font-semibold">{money(overview?.revenue ?? 0)}</div>
               </div>
             </div>
           </div>
@@ -1227,19 +1251,7 @@ function MiniStat({
   );
 }
 
-function CustomersView() {
-  const people = [
-    [
-      "Mariam Hassan",
-      "mariam.hassan@email.com",
-      "12",
-      "EGP 18,420",
-      "18 Jul 2026",
-    ],
-    ["Nour El Din", "nour.eldin@email.com", "8", "EGP 12,680", "18 Jul 2026"],
-    ["Salma Adel", "salma.adel@email.com", "15", "EGP 26,140", "17 Jul 2026"],
-    ["Omar Khaled", "omar.k@email.com", "4", "EGP 6,820", "17 Jul 2026"],
-  ];
+function CustomersView({ customers }: { customers: AdminCustomer[] }) {
   return (
     <>
       <Heading
@@ -1247,9 +1259,9 @@ function CustomersView() {
         copy="Understand and support the people who shop with Aura."
       />
       <div className="grid gap-4 sm:grid-cols-3">
-        <MiniStat icon={Users} label="Total customers" value="1,248" />
-        <MiniStat icon={TrendingUp} label="Returning rate" value="42.8%" />
-        <MiniStat icon={Gift} label="VIP customers" value="86" />
+        <MiniStat icon={Users} label="Total customers" value={String(customers.length)} />
+        <MiniStat icon={TrendingUp} label="Verified customers" value={String(customers.filter((customer) => customer.phone).length)} />
+        <MiniStat icon={Gift} label="Customers shown" value={String(customers.length)} />
       </div>
       <div className="mt-5 overflow-hidden rounded-2xl border border-black/7 bg-white">
         <table className="w-full min-w-[650px] text-left text-xs">
@@ -1263,15 +1275,15 @@ function CustomersView() {
             </tr>
           </thead>
           <tbody>
-            {people.map((p) => (
-              <tr key={p[1]} className="border-t border-black/5">
+            {customers.map((customer) => (
+              <tr key={customer.id} className="border-t border-black/5">
                 <td className="px-6 py-4">
-                  <div className="font-semibold">{p[0]}</div>
-                  <div className="mt-1 text-[10px] text-black/38">{p[1]}</div>
+                  <div className="font-semibold">{customer.fullName}</div>
+                  <div className="mt-1 text-[10px] text-black/38">{customer.email}</div>
                 </td>
-                <td>{p[2]}</td>
-                <td className="font-semibold">{p[3]}</td>
-                <td className="text-black/45">{p[4]}</td>
+                <td>{customer.orders ?? 0}</td>
+                <td className="font-semibold">{money(customer.totalSpent ?? 0)}</td>
+                <td className="text-black/45">{customer.lastOrder ? new Date(customer.lastOrder).toLocaleDateString("en-EG") : customer.createdAt ? `Joined ${new Date(customer.createdAt).toLocaleDateString("en-EG")}` : "—"}</td>
                 <td>
                   <MoreHorizontal size={16} />
                 </td>
@@ -1279,18 +1291,27 @@ function CustomersView() {
             ))}
           </tbody>
         </table>
+        {customers.length === 0 && <div className="p-12 text-center text-sm text-black/40">No customers found.</div>}
       </div>
     </>
   );
 }
 
-function DiscountsView({ notify }: { notify: (s: string) => void }) {
-  const [active, setActive] = useState([true, true, false]);
-  const deals = [
-    ["SUMMER20", "20% off", "Orders over EGP 1,500", "284 uses"],
-    ["WELCOME10", "10% off", "First order only", "92 uses"],
-    ["FREESHIP", "Free shipping", "Orders over EGP 2,000", "Inactive"],
-  ];
+function DiscountsView({ discounts, setDiscounts, token, notify }: { discounts: AdminDiscount[]; setDiscounts: React.Dispatch<React.SetStateAction<AdminDiscount[]>>; token: string; notify: (s: string) => void }) {
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ code: "", type: "PERCENTAGE", value: "", minimumSubtotal: "", usageLimit: "", endsAt: "" });
+  const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+  const save = async () => {
+    const response = await fetch(`${base}/discounts`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ code: form.code, type: form.type, value: Number(form.value), minimumSubtotal: form.minimumSubtotal ? Number(form.minimumSubtotal) : null, usageLimit: form.usageLimit ? Number(form.usageLimit) : null, endsAt: form.endsAt || null }) });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error ?? "Could not create discount");
+    setDiscounts((items) => [body.data, ...items]); setCreating(false); setForm({ code: "", type: "PERCENTAGE", value: "", minimumSubtotal: "", usageLimit: "", endsAt: "" }); notify("Discount created");
+  };
+  const toggle = async (discount: AdminDiscount) => {
+    const response = await fetch(`${base}/discounts/${discount.id}`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ isActive: !discount.isActive }) });
+    const body = await response.json(); if (!response.ok) { notify(body.error ?? "Could not update discount"); return; }
+    setDiscounts((items) => items.map((item) => item.id === discount.id ? body.data : item));
+  };
   return (
     <>
       <Heading
@@ -1298,17 +1319,18 @@ function DiscountsView({ notify }: { notify: (s: string) => void }) {
         copy="Create offers that turn browsers into loyal customers."
         action={
           <button
-            onClick={() => notify("New discount draft created")}
+            onClick={() => setCreating(true)}
             className="flex items-center gap-2 rounded-lg bg-[#24352c] px-4 py-3 text-xs font-semibold text-white"
           >
             <Plus size={16} /> Create discount
           </button>
         }
       />
+      {creating && <div className="mb-5 grid gap-3 rounded-2xl border border-black/7 bg-white p-5 md:grid-cols-3"><input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="CODE" className="h-10 rounded-lg border border-black/10 px-3 font-mono text-xs" /><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="h-10 rounded-lg border border-black/10 px-3 text-xs"><option value="PERCENTAGE">Percentage</option><option value="FIXED_AMOUNT">Fixed EGP</option></select><input type="number" min="0.01" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} placeholder="Amount" className="h-10 rounded-lg border border-black/10 px-3 text-xs" /><input type="number" min="0" value={form.minimumSubtotal} onChange={(e) => setForm({ ...form, minimumSubtotal: e.target.value })} placeholder="Minimum order (EGP)" className="h-10 rounded-lg border border-black/10 px-3 text-xs" /><input type="number" min="1" value={form.usageLimit} onChange={(e) => setForm({ ...form, usageLimit: e.target.value })} placeholder="Usage limit (optional)" className="h-10 rounded-lg border border-black/10 px-3 text-xs" /><input type="datetime-local" value={form.endsAt} onChange={(e) => setForm({ ...form, endsAt: e.target.value })} className="h-10 rounded-lg border border-black/10 px-3 text-xs" /><div className="md:col-span-3 flex justify-end gap-2"><button onClick={() => setCreating(false)} className="rounded-lg px-4 py-2 text-xs">Cancel</button><button onClick={() => void save().catch((error: Error) => notify(error.message))} className="rounded-lg bg-[#24352c] px-4 py-2 text-xs font-semibold text-white">Save discount</button></div></div>}
       <div className="grid gap-4 lg:grid-cols-3">
-        {deals.map((d, i) => (
+        {discounts.map((discount) => (
           <div
-            key={d[0]}
+            key={discount.id}
             className="rounded-2xl border border-black/7 bg-white p-6"
           >
             <div className="flex items-start justify-between">
@@ -1316,27 +1338,26 @@ function DiscountsView({ notify }: { notify: (s: string) => void }) {
                 <Tag size={18} />
               </div>
               <button
-                onClick={() =>
-                  setActive((v) => v.map((x, j) => (i === j ? !x : x)))
-                }
-                className={`relative h-6 w-11 rounded-full transition ${active[i] ? "bg-[#385243]" : "bg-black/15"}`}
+                onClick={() => void toggle(discount)}
+                className={`relative h-6 w-11 rounded-full transition ${discount.isActive ? "bg-[#385243]" : "bg-black/15"}`}
               >
                 <span
-                  className={`absolute top-1 size-4 rounded-full bg-white transition ${active[i] ? "left-6" : "left-1"}`}
+                  className={`absolute top-1 size-4 rounded-full bg-white transition ${discount.isActive ? "left-6" : "left-1"}`}
                 />
               </button>
             </div>
             <div className="mt-6 font-mono text-lg font-bold tracking-wider">
-              {d[0]}
+              {discount.code}
             </div>
-            <div className="mt-2 text-sm font-semibold">{d[1]}</div>
-            <div className="mt-1 text-xs text-black/42">{d[2]}</div>
+            <div className="mt-2 text-sm font-semibold">{discount.type === "PERCENTAGE" ? `${Number(discount.value)}% off` : `${money(Number(discount.value))} off`}</div>
+            <div className="mt-1 text-xs text-black/42">{discount.minimumSubtotal ? `Orders over ${money(Number(discount.minimumSubtotal))}` : "No minimum order"}{discount.endsAt ? ` · Ends ${new Date(discount.endsAt).toLocaleDateString("en-EG")}` : ""}</div>
             <div className="mt-6 border-t border-black/6 pt-4 text-[11px] text-black/40">
-              {d[3]}
+              {discount.usedCount}{discount.usageLimit ? ` / ${discount.usageLimit}` : ""} uses
             </div>
           </div>
         ))}
       </div>
+      {discounts.length === 0 && <div className="mt-6 rounded-2xl border border-dashed border-black/15 p-10 text-center text-sm text-black/40">No discount codes yet.</div>}
     </>
   );
 }
@@ -1360,6 +1381,7 @@ function ProductModal({
   const [sku, setSku] = useState(product?.sku ?? "");
   const [categoryId, setCategoryId] = useState(product?.categoryId ?? "");
   const [price, setPrice] = useState(product ? String(product.price) : "");
+  const [discountPrice, setDiscountPrice] = useState(product?.discountPrice ? String(product.discountPrice) : "");
   const [stock, setStock] = useState(product ? String(product.stock) : "");
   const [newCategory, setNewCategory] = useState("");
   const [addingCategory, setAddingCategory] = useState(false);
@@ -1377,6 +1399,7 @@ function ProductModal({
         categoryId: categoryId || undefined,
         category: category?.nameEn ?? "Uncategorized",
         price: Number(price) || 0,
+        discountPrice: discountPrice ? Number(discountPrice) : null,
         stock: amount,
         status:
           amount === 0 ? "Out of stock" : amount < 10 ? "Low stock" : "Active",
@@ -1477,6 +1500,19 @@ function ProductModal({
               />
             </label>
           </div>
+          <label className="block text-xs font-semibold">
+            Sale price (EGP, optional)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              max={price || undefined}
+              value={discountPrice}
+              onChange={(e) => setDiscountPrice(e.target.value)}
+              className="mt-2 h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-normal"
+              placeholder="Leave empty for no product sale"
+            />
+          </label>
           <div>
             <div className="text-xs font-semibold">Create a category</div>
             <div className="mt-2 flex gap-2">

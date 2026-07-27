@@ -14,6 +14,7 @@ export interface StoreProduct {
   category?: { nameEn: string; nameAr: string; slugEn?: string | null } | null;
   images: Array<{ id: string; imageUrl: string; altText?: string | null; isPrimary?: boolean | null }>;
   variants: Array<{ id: string; stock?: number | null; price?: string | number | null; color?: string | null; size?: string | null }>;
+  reviews?: Array<{ id: string; rating: number; comment?: string | null; createdAt: string; user?: { fullName: string } | null }>;
 }
 
 export interface CustomerSession { id: string; fullName: string; email: string; role: 'ADMIN' | 'CUSTOMER' }

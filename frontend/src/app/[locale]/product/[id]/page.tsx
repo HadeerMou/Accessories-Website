@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { ArrowLeft, Heart, LoaderCircle, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Heart, LoaderCircle, ShoppingBag, Star } from 'lucide-react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -18,6 +18,9 @@ export default function ProductDetailPage() {
   const [error, setError] = useState('');
   const [wishlist, setWishlist] = useState(false);
   const [message, setMessage] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     if (!params?.id) return;
@@ -88,6 +91,42 @@ export default function ProductDetailPage() {
     }
   };
 
+  const handleReviewSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!product) return;
+    const token = customerToken();
+    if (!token) {
+      window.dispatchEvent(new Event('aura-open-auth'));
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      const response = await fetch(`${API_URL}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ productId: product.id, rating: reviewRating, comment: reviewComment }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body?.error ?? 'Could not submit review');
+      
+      // Update local product reviews
+      setProduct({
+        ...product,
+        reviews: [body.data, ...(product.reviews || [])]
+      });
+      
+      setReviewRating(5);
+      setReviewComment('');
+      setMessage(locale === 'ar' ? 'تمت إضافة تقييمك بنجاح' : 'Your review was submitted successfully');
+      window.setTimeout(() => setMessage(''), 3000);
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : 'Could not submit review');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   if (loading) {
     return (
       <main className="min-h-screen flex flex-col bg-[#FAF8F5]">
@@ -149,6 +188,76 @@ export default function ProductDetailPage() {
             <ShoppingBag size={16} /> {locale === 'ar' ? 'أضف إلى السلة' : 'Add to bag'}
           </button>
           {message ? <p className="mt-4 text-sm text-[#26372f]">{message}</p> : null}
+        </div>
+      </section>
+
+      {/* Reviews Section */}
+      <section className="mx-auto w-full max-w-6xl px-8 py-16 border-t border-black/10">
+        <h2 className="text-2xl font-serif text-[#2C2A28] mb-8">{locale === 'ar' ? 'آراء العملاء' : 'Customer Reviews'}</h2>
+        <div className="grid gap-12 lg:grid-cols-2">
+          {/* Reviews List */}
+          <div className="space-y-6">
+            {!product.reviews || product.reviews.length === 0 ? (
+              <p className="text-sm text-[#2C2A28]/60">{locale === 'ar' ? 'لا توجد تقييمات حتى الآن. كن أول من يكتب تقييماً!' : 'No reviews yet. Be the first to review!'}</p>
+            ) : (
+              product.reviews.map((review: any) => (
+                <div key={review.id} className="border-b border-black/5 pb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-semibold text-sm">{review.user?.fullName || 'Customer'}</span>
+                    <span className="text-xs text-[#2C2A28]/40">{new Date(review.createdAt).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                  </div>
+                  <div className="flex items-center gap-1 mb-3">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <Star key={star} size={14} fill={star <= review.rating ? "#d1ae68" : "none"} color={star <= review.rating ? "#d1ae68" : "#ccc"} />
+                    ))}
+                  </div>
+                  {review.comment && <p className="text-sm text-[#2C2A28]/70">{review.comment}</p>}
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Write Review Form */}
+          <div className="bg-white p-8 rounded-2xl border border-black/5 shadow-sm h-fit">
+            <h3 className="text-lg font-serif mb-4">{locale === 'ar' ? 'اكتب تقييمك' : 'Write a Review'}</h3>
+            <form onSubmit={handleReviewSubmit} className="space-y-5">
+              <div>
+                <label className="block text-xs font-semibold mb-2">{locale === 'ar' ? 'التقييم' : 'Rating'}</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className="hover:scale-110 transition-transform"
+                    >
+                      <Star size={24} fill={star <= reviewRating ? "#d1ae68" : "none"} color={star <= reviewRating ? "#d1ae68" : "#ccc"} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-2">{locale === 'ar' ? 'تعليق (اختياري)' : 'Comment (Optional)'}</label>
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  className="w-full rounded-lg border border-black/10 bg-[#fdfcf9] px-4 py-3 text-sm outline-none focus:border-[#667d6b] resize-none"
+                  rows={4}
+                  placeholder={locale === 'ar' ? 'شارك رأيك حول هذا المنتج...' : 'Share your thoughts about this product...'}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={submittingReview}
+                className="w-full rounded-full bg-[#26372f] px-6 py-3 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50"
+              >
+                {submittingReview ? (locale === 'ar' ? 'جاري الإرسال...' : 'Submitting...') : (locale === 'ar' ? 'إرسال التقييم' : 'Submit Review')}
+              </button>
+              <p className="text-[10px] text-center text-black/40 mt-4">
+                {locale === 'ar' ? 'يمكنك فقط تقييم المنتجات التي قمت بشرائها.' : 'You can only review products you have purchased.'}
+              </p>
+            </form>
+          </div>
         </div>
       </section>
       <Footer />

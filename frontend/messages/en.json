@@ -10,7 +10,10 @@
     "about": "About us",
     "contacts": "Contacts",
     "favorites": "Favorites",
-    "cart": "Cart"
+    "cart": "Cart",
+    "brand": "Aura",
+    "myAccount": "My account",
+    "signOut": "Sign out"
   },
   "Hero": {
     "title": "Live in the moment",

@@ -20,13 +20,14 @@ import {
   Settings,
   ShoppingBag,
   Sparkles,
+  Star,
   Tag,
   TrendingUp,
   Users,
   X,
 } from "lucide-react";
 
-type Section = "Overview" | "Orders" | "Products" | "Customers" | "Discounts";
+type Section = "Overview" | "Orders" | "Products" | "Customers" | "Discounts" | "Reviews";
 type OrderStatus = "Processing" | "Shipped" | "Delivered" | "Cancelled";
 type ProductStatusLabel = "Active" | "Low stock" | "Out of stock";
 type AdminCategory = { id: string; nameEn: string };
@@ -34,6 +35,7 @@ type AdminNotification = { id:string; type:"ORDER"|"USER"; title:string; message
 type AdminCustomer = { id: string; fullName: string; email: string; phone?: string | null; createdAt?: string | null; orders?: number; totalSpent?: number; lastOrder?: string | null };
 type AdminDiscount = { id: string; code: string; type: "PERCENTAGE" | "FIXED_AMOUNT"; value: string | number; minimumSubtotal?: string | number | null; startsAt?: string | null; endsAt?: string | null; usageLimit?: number | null; usedCount: number; isActive: boolean };
 type AdminOverview = { revenue: number; orders: number; customers: number; products: number; averageOrderValue: number };
+type AdminReview = { id: string; rating: number; comment?: string | null; createdAt: string; product: { nameEn: string; nameAr: string }; user: { fullName: string; email: string } };
 type AdminProduct = {
   backendId?: string;
   name: string;
@@ -159,10 +161,11 @@ const productsSeed: AdminProduct[] = [
 const nav: { label: Section; icon: typeof LayoutDashboard; badge?: string }[] =
   [
     { label: "Overview", icon: LayoutDashboard },
-    { label: "Orders", icon: ShoppingBag, badge: "12" },
+    { label: "Orders", icon: ShoppingBag },
     { label: "Products", icon: Package },
     { label: "Customers", icon: Users },
     { label: "Discounts", icon: Tag },
+    { label: "Reviews", icon: Star },
   ];
 
 const money = (value: number) =>
@@ -308,6 +311,7 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState(productsSeed.slice(0, 0));
   const [customers, setCustomers] = useState<AdminCustomer[]>([]);
   const [discounts, setDiscounts] = useState<AdminDiscount[]>([]);
+  const [reviews, setReviews] = useState<AdminReview[]>([]);
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All");
@@ -339,9 +343,10 @@ export default function AdminDashboard() {
       fetch(`${base}/categories`, { headers }),
       fetch(`${base}/users?role=CUSTOMER&limit=50`, { headers }),
       fetch(`${base}/discounts`, { headers }),
+      fetch(`${base}/reviews`, { headers }),
       fetch(`${base}/admin/overview`, { headers }),
     ])
-      .then(async ([productsResponse, ordersResponse, categoriesResponse, customersResponse, discountsResponse, overviewResponse]) => {
+      .then(async ([productsResponse, ordersResponse, categoriesResponse, customersResponse, discountsResponse, reviewsResponse, overviewResponse]) => {
         if (
           productsResponse.status === 401 ||
           productsResponse.status === 403 ||
@@ -402,6 +407,7 @@ export default function AdminDashboard() {
           }));
         }
         if (discountsResponse.ok) setDiscounts((await discountsResponse.json()).data);
+        if (reviewsResponse.ok) setReviews((await reviewsResponse.json()).data);
         if (overviewResponse.ok) setOverview((await overviewResponse.json()).data);
       })
       .catch(() => {
@@ -574,7 +580,10 @@ export default function AdminDashboard() {
           <div className="mb-3 px-4 text-[10px] font-semibold uppercase tracking-[.18em] text-white/35">
             Workspace
           </div>
-          {nav.map(({ label, icon: Icon, badge }) => (
+          {nav.map(({ label, icon: Icon }) => {
+            const pendingOrdersCount = orders.filter(o => o.status === "Processing").length;
+            const badge = label === "Orders" && pendingOrdersCount > 0 ? String(pendingOrdersCount) : undefined;
+            return (
             <button
               key={label}
               onClick={() => {
@@ -595,15 +604,10 @@ export default function AdminDashboard() {
                 </span>
               )}
             </button>
-          ))}
+            );
+          })}
         </nav>
         <div className="border-t border-white/10 p-3">
-          <button className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-white/60 hover:bg-white/8 hover:text-white">
-            <Settings size={17} /> Settings
-          </button>
-          <button className="flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-white/60 hover:bg-white/8 hover:text-white">
-            <CircleHelp size={17} /> Help center
-          </button>
           <button
             onClick={() => {
               window.localStorage.removeItem("aura_admin_token");
@@ -700,8 +704,9 @@ export default function AdminDashboard() {
               notify={notify}
             />
           )}
-          {section === "Customers" && <CustomersView customers={customers} />}
-          {section === "Discounts" && <DiscountsView discounts={discounts} setDiscounts={setDiscounts} token={token} notify={notify} />}
+          {section === "Customers" && <CustomersView customers={customers.filter(c => c.fullName.toLowerCase().includes(query.toLowerCase()) || c.email.toLowerCase().includes(query.toLowerCase()))} />}
+          {section === "Discounts" && <DiscountsView discounts={discounts.filter(d => d.code.toLowerCase().includes(query.toLowerCase()))} setDiscounts={setDiscounts} token={token} notify={notify} />}
+          {section === "Reviews" && <ReviewsView reviews={reviews.filter(r => r.product.nameEn.toLowerCase().includes(query.toLowerCase()) || r.user.fullName.toLowerCase().includes(query.toLowerCase()) || (r.comment && r.comment.toLowerCase().includes(query.toLowerCase())))} setReviews={setReviews} token={token} notify={notify} />}
         </main>
       </div>
       {showProduct && (
@@ -1564,3 +1569,89 @@ function ProductModal({
     </div>
   );
 }
+
+function ReviewsView({ reviews, setReviews, token, notify }: { reviews: AdminReview[]; setReviews: React.Dispatch<React.SetStateAction<AdminReview[]>>; token: string; notify: (s: string) => void }) {
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const removeReview = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this review?")) return;
+    setDeleting(id);
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+      const response = await fetch(`${base}/reviews/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("Failed to delete review");
+      setReviews(v => v.filter(r => r.id !== id));
+      notify("Review deleted successfully");
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Error deleting review");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <Heading title="Reviews" copy="Monitor and manage customer reviews." />
+      <div className="rounded-2xl border border-black/5 bg-white shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[#fcfbf9] text-xs uppercase tracking-wider text-black/50 border-b border-black/5">
+              <tr>
+                <th className="px-6 py-4 font-semibold">Product</th>
+                <th className="px-6 py-4 font-semibold">Customer</th>
+                <th className="px-6 py-4 font-semibold">Rating</th>
+                <th className="px-6 py-4 font-semibold">Comment</th>
+                <th className="px-6 py-4 font-semibold">Date</th>
+                <th className="px-6 py-4 font-semibold text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-black/5">
+              {reviews.map(review => (
+                <tr key={review.id} className="hover:bg-black/[0.01] transition-colors">
+                  <td className="px-6 py-4 font-medium">{review.product.nameEn}</td>
+                  <td className="px-6 py-4">
+                    <div className="font-medium">{review.user.fullName}</div>
+                    <div className="text-xs text-black/40">{review.user.email}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-0.5 text-[#d1ae68]">
+                      {Array.from({ length: review.rating }).map((_, i) => (
+                        <Star key={i} size={14} fill="currentColor" />
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="max-w-xs truncate text-black/70" title={review.comment || ""}>
+                      {review.comment || <span className="text-black/30 italic">No comment</span>}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-black/60">
+                    {new Date(review.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => removeReview(review.id)}
+                      disabled={deleting === review.id}
+                      className="text-xs font-semibold text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                    >
+                      {deleting === review.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {reviews.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-black/40">No reviews found</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+

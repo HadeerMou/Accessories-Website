@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -309,68 +309,54 @@ export default function ProfilePage() {
     window.location.href = '/';
   };
 
-  const createdAt = useMemo(
-    () => profile ? new Date(profile.createdAt).toLocaleDateString(localeTag, { year: 'numeric', month: 'short', day: 'numeric' }) : '',
-    [profile, localeTag],
-  );
-
-  const updatedAt = useMemo(
-    () => profile && profile.updatedAt ? new Date(profile.updatedAt).toLocaleDateString(localeTag, { year: 'numeric', month: 'short', day: 'numeric' }) : '',
-    [profile, localeTag],
-  );
-
   return (
     <main className="min-h-screen flex flex-col bg-[#FAF8F5]">
       <Header />
-      <section className="mx-auto w-full max-w-7xl flex-1 px-6 py-16 md:px-10 md:py-20">
-        <div className="mb-10 grid gap-8 lg:grid-cols-[1fr_320px]">
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-[.2em] text-[#927345]">{t('section')}</div>
-            <h1 className="mt-3 font-serif text-5xl text-[#2C2A28]">{t('title')}</h1>
-            <p className="mt-4 max-w-2xl text-sm text-[#2C2A28]/70">{t('description')}</p>
-          </div>
-          <div className="rounded-3xl border border-black/10 bg-white p-8 shadow-sm">
-            <div className="text-sm font-semibold text-[#2C2A28]">{t('accountOverview')}</div>
-            <div className="mt-6 grid gap-3 text-sm text-[#2C2A28]/80">
-              <div><span className="font-semibold text-[#2C2A28]">{t('fullName')}:</span> {profile?.fullName ?? '—'}</div>
-              <div><span className="font-semibold text-[#2C2A28]">{t('email')}:</span> {profile?.email ?? '—'}</div>
-              <div><span className="font-semibold text-[#2C2A28]">{t('phone')}:</span> {profile?.phone ?? t('notProvided')}</div>
-              <div><span className="font-semibold text-[#2C2A28]">{t('role')}:</span> {profile?.role ?? '—'}</div>
-              <div><span className="font-semibold text-[#2C2A28]">{t('verified')}:</span> {profile?.isVerified ? t('yes') : t('no')}</div>
-              <div><span className="font-semibold text-[#2C2A28]">{t('joined')}:</span> {createdAt}</div>
-              {updatedAt && <div><span className="font-semibold text-[#2C2A28]">{t('updated')}:</span> {updatedAt}</div>}
-            </div>
-          </div>
-        </div>
+      <section className="mx-auto w-full max-w-7xl flex-1 px-8 py-24 flex flex-col md:flex-row gap-16">
 
         {loading ? (
-          <div className="rounded-3xl border border-black/10 bg-white/70 p-10 text-center text-sm text-[#2C2A28]">{t('loading')}</div>
+          <div className="w-full rounded-3xl border border-black/10 bg-white/70 p-10 text-center text-sm text-[#2C2A28]">{t('loading')}</div>
         ) : (
-          <div className="grid gap-10 lg:grid-cols-[240px_1fr]">
-            <aside className="rounded-3xl border border-black/10 bg-white p-6 shadow-sm">
-              <div className="space-y-6 border-b border-black/10 pb-6">
-                <div className="text-xs font-semibold uppercase tracking-[.24em] text-[#927345]">{t('section')}</div>
-                <div className="text-2xl font-serif text-[#2C2A28]">{t('title')}</div>
+          <>
+            <aside className="w-full md:w-64 shrink-0">
+              <div className="mb-8 border-b border-[#2C2A28]/20 pb-4">
+                <div className="text-sm font-sans uppercase tracking-widest text-[#2C2A28]">{t('section')}</div>
               </div>
-              <nav className="mt-6 space-y-2">
-                <button type="button" onClick={() => setActiveTab('personal')} className={`w-full rounded-2xl px-4 py-3 text-left text-sm font-semibold transition ${activeTab === 'personal' ? 'bg-[#faf8f5] text-[#2C2A28]' : 'text-[#2C2A28] hover:bg-[#f5f2eb]'}`}>
+              <nav className="flex flex-col space-y-4 font-sans text-sm">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('personal')}
+                  className={`text-left transition-colors ${activeTab === 'personal' ? 'text-[#2C2A28] font-medium' : 'text-[#2C2A28]/60 hover:text-[#2C2A28]'}`}
+                >
                   {t('profileTabPersonal')}
                 </button>
-                <button type="button" onClick={() => setActiveTab('addresses')} className={`w-full rounded-2xl px-4 py-3 text-left text-sm font-semibold transition ${activeTab === 'addresses' ? 'bg-[#faf8f5] text-[#2C2A28]' : 'text-[#2C2A28] hover:bg-[#f5f2eb]'}`}>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('addresses')}
+                  className={`text-left transition-colors ${activeTab === 'addresses' ? 'text-[#2C2A28] font-medium' : 'text-[#2C2A28]/60 hover:text-[#2C2A28]'}`}
+                >
                   {t('profileTabAddresses')}
                 </button>
-                <button type="button" onClick={() => setActiveTab('orders')} className={`w-full rounded-2xl px-4 py-3 text-left text-sm font-semibold transition ${activeTab === 'orders' ? 'bg-[#faf8f5] text-[#2C2A28]' : 'text-[#2C2A28] hover:bg-[#f5f2eb]'}`}>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('orders')}
+                  className={`text-left transition-colors ${activeTab === 'orders' ? 'text-[#2C2A28] font-medium' : 'text-[#2C2A28]/60 hover:text-[#2C2A28]'}`}
+                >
                   {t('profileTabOrders')}
                 </button>
               </nav>
-              <div className="mt-8 border-t border-black/10 pt-6">
-                <button type="button" onClick={handleSignOut} className="inline-flex w-full items-center justify-center rounded-full bg-[#df4d4d] px-4 py-3 text-sm font-semibold uppercase tracking-[.18em] text-white transition hover:bg-[#b93b3b]">
+              <div className="mt-10 border-t border-[#2C2A28]/20 pt-6">
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="text-left text-sm font-sans text-[#df4d4d]/80 hover:text-[#df4d4d] transition-colors"
+                >
                   {t('profileTabSignOut')}
                 </button>
               </div>
             </aside>
 
-            <div className="space-y-8">
+            <div className="flex-1 max-w-3xl">
               {error && <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">{error}</div>}
               {message && <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-sm text-emerald-700">{message}</div>}
 
@@ -555,7 +541,7 @@ export default function ProfilePage() {
                 </section>
               )}
             </div>
-          </div>
+          </>
         )}
       </section>
       <Footer />

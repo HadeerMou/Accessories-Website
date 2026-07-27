@@ -30,3 +30,22 @@ export async function sendOrderConfirmation(order: OrderForEmail) {
   const results = await Promise.allSettled(messages);
   return results.length > 0 && results.every(result => result.status === "fulfilled");
 }
+
+export async function sendPasswordResetEmail(email: string, name: string, resetLink: string) {
+  const { host, port, secure, user, pass, from } = env.smtp;
+  if (!host || !user || !pass) {
+    console.warn(`Password reset email to ${email} skipped because SMTP is not configured`);
+    return false;
+  }
+
+  const transporter = nodemailer.createTransport({ host, port, secure, auth: { user, pass } });
+  const text = `Hello ${name},\n\nA request was made to reset your Aura password. Click the link below to create a new password:\n\n${resetLink}\n\nIf you did not request this, you can safely ignore this email. This link expires in one hour.`;
+
+  try {
+    await transporter.sendMail({ from, to: email, subject: `Aura password reset`, text });
+    return true;
+  } catch (error) {
+    console.error(`Password reset email failed for ${email}`, error);
+    return false;
+  }
+}

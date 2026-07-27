@@ -15,6 +15,7 @@ if (nodeEnv === "production" && authSecret === "development-only-change-this-sec
 export const env = {
   port,
   corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:3000",
+  frontendUrl: process.env.FRONTEND_URL ?? "http://localhost:3000",
   databaseUrl: process.env.DATABASE_URL,
   authSecret,
   nodeEnv,

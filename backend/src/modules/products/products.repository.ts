@@ -44,7 +44,13 @@ export class ProductRepository {
   findById(id: string) {
     return prisma.product.findFirst({
       where: { id, deletedAt: null },
-      include: { ...productInclude, reviews: true },
+      include: { 
+        ...productInclude, 
+        reviews: { 
+          orderBy: { createdAt: "desc" },
+          include: { user: { select: { fullName: true } } }
+        } 
+      },
     });
   }
 

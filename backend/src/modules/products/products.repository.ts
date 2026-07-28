@@ -1,6 +1,7 @@
 import type { Prisma } from "../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import type { ProductFilters } from "./products.types.js";
+import { ProductStatus } from "../../generated/prisma/enums.js";
 
 export const productInclude = {
   category: true,
@@ -70,6 +71,32 @@ export class ProductRepository {
     });
   }
 
+  findStoreBySlug(slug: string) {
+    return prisma.product.findFirst({
+      where: {
+        deletedAt: null,
+        status: ProductStatus.ACTIVE,
+        OR: [
+          { slugEn: slug },
+          { slugAr: slug },
+        ],
+      },
+      include: {
+        ...productInclude,
+        reviews: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            user: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   create(data: Prisma.ProductCreateInput) {
     return prisma.product.create({ data, include: productInclude });
   }
@@ -82,10 +109,10 @@ export class ProductRepository {
     });
   }
 
-  archive(id: string) {
+  softDelete(id: string) {
     return prisma.product.update({
       where: { id },
-      data: { status: "ARCHIVED", deletedAt: new Date(), updatedAt: new Date() },
+      data: { deletedAt: new Date(), updatedAt: new Date() },
       include: productInclude,
     });
   }

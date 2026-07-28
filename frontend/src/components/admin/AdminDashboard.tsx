@@ -29,7 +29,7 @@ import {
 
 type Section = "Overview" | "Orders" | "Products" | "Customers" | "Discounts" | "Reviews";
 type OrderStatus = "Processing" | "Shipped" | "Delivered" | "Cancelled";
-type ProductStatusLabel = "Active" | "Low stock" | "Out of stock";
+type ProductStatus = "ACTIVE" | "DRAFT" | "OUT_OF_STOCK";
 type AdminCategory = { id: string; nameEn: string };
 type AdminNotification = { id:string; type:"ORDER"|"USER"; title:string; message:string; createdAt:string|null };
 type AdminCustomer = { id: string; fullName: string; email: string; phone?: string | null; createdAt?: string | null; orders?: number; totalSpent?: number; lastOrder?: string | null };
@@ -45,7 +45,7 @@ type AdminProduct = {
   price: number;
   discountPrice?: number | null;
   stock: number;
-  status: ProductStatusLabel;
+  status: ProductStatus;
   tone: string;
 };
 
@@ -61,7 +61,7 @@ const productFromApi = (value: Record<string, unknown>): AdminProduct => {
     price: Number(value.price),
     discountPrice: value.discountPrice === null || value.discountPrice === undefined ? null : Number(value.discountPrice),
     stock,
-    status: stock === 0 ? "Out of stock" : stock < 10 ? "Low stock" : "Active",
+    status: String(value.status) as ProductStatus,
     tone: "from-[#c9aa6a] to-[#efe0b8]",
   };
 };
@@ -126,7 +126,7 @@ const productsSeed: AdminProduct[] = [
     category: "Earrings",
     price: 1450,
     stock: 24,
-    status: "Active",
+    status: "ACTIVE",
     tone: "from-[#d1ae68] to-[#f1dfb5]",
   },
   {
@@ -135,7 +135,7 @@ const productsSeed: AdminProduct[] = [
     category: "Necklaces",
     price: 2200,
     stock: 8,
-    status: "Low stock",
+    status: "ACTIVE",
     tone: "from-[#b69a65] to-[#e7d6aa]",
   },
   {
@@ -144,7 +144,7 @@ const productsSeed: AdminProduct[] = [
     category: "Rings",
     price: 1780,
     stock: 0,
-    status: "Out of stock",
+    status: "DRAFT",
     tone: "from-[#d8d1c3] to-[#fbf8ef]",
   },
   {
@@ -153,7 +153,7 @@ const productsSeed: AdminProduct[] = [
     category: "Bracelets",
     price: 1950,
     stock: 16,
-    status: "Active",
+    status: "ACTIVE",
     tone: "from-[#c8a862] to-[#ebd296]",
   },
 ];
@@ -287,19 +287,33 @@ function AdminLogin({ onLogin }: { onLogin: (token: string) => void }) {
 
 function Status({ value }: { value: string }) {
   const style =
-    value === "Delivered" || value === "Active"
+    value === "Delivered" || value === "ACTIVE"
       ? "bg-emerald-50 text-emerald-700"
       : value === "Shipped"
         ? "bg-blue-50 text-blue-700"
-        : value === "Processing" || value === "Low stock"
+        : value === "Processing" || value === "DRAFT"
           ? "bg-amber-50 text-amber-700"
           : "bg-rose-50 text-rose-700";
+
+  const label =
+    value === "ACTIVE"
+      ? "Active"
+      : value === "Delivered"
+      ? "Delivered"
+      : value === "Shipped"
+      ? "Shipped"
+      : value === "DRAFT"
+      ? "Draft"
+      : value === "Processing"
+      ? "Processing"
+      : "Out of stock";
+
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${style}`}
     >
       <span className="size-1.5 rounded-full bg-current" />
-      {value}
+      {label}
     </span>
   );
 }
@@ -496,7 +510,7 @@ export default function AdminDashboard() {
           discountPrice: product.discountPrice ?? null,
           stock: product.stock,
           sku: product.sku,
-          status: "ACTIVE",
+          status: product.status,
         }),
       },
     );
@@ -1388,6 +1402,9 @@ function ProductModal({
   const [price, setPrice] = useState(product ? String(product.price) : "");
   const [discountPrice, setDiscountPrice] = useState(product?.discountPrice ? String(product.discountPrice) : "");
   const [stock, setStock] = useState(product ? String(product.stock) : "");
+  const [status, setStatus] = useState<ProductStatus>(
+    product?.status ?? "ACTIVE"
+  );  
   const [newCategory, setNewCategory] = useState("");
   const [addingCategory, setAddingCategory] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1406,8 +1423,7 @@ function ProductModal({
         price: Number(price) || 0,
         discountPrice: discountPrice ? Number(discountPrice) : null,
         stock: amount,
-        status:
-          amount === 0 ? "Out of stock" : amount < 10 ? "Low stock" : "Active",
+        status: amount === 0 ? "OUT_OF_STOCK" : status,
         tone: product?.tone ?? "from-[#c9aa6a] to-[#efe0b8]",
       });
     } catch (cause) {
@@ -1544,10 +1560,33 @@ function ProductModal({
               min="0"
               step="1"
               value={stock}
-              onChange={(e) => setStock(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setStock(value);
+
+                if (Number(value) === 0) {
+                  setStatus("OUT_OF_STOCK");
+                } else if (status === "OUT_OF_STOCK") {
+                  setStatus("ACTIVE");
+                }
+              }}
               className="mt-2 h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-normal"
               required
             />
+          </label>
+          <label className="block text-xs font-semibold">
+            Status
+
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as ProductStatus)}
+              disabled={Number(stock) === 0}
+              className="mt-2 h-11 w-full rounded-lg border border-black/10 bg-white px-3"
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="DRAFT">Draft</option>
+              <option value="OUT_OF_STOCK">Out of Stock</option>
+            </select>
           </label>
         </div>
         <div className="mt-8 flex justify-end gap-3">

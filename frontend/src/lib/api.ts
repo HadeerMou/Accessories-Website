@@ -10,7 +10,7 @@ export interface StoreProduct {
   discountPrice?: string | number | null;
   stock?: number | null;
   featured?: boolean | null;
-  status: 'ACTIVE' | 'DRAFT' | 'OUT_OF_STOCK' | 'ARCHIVED';
+  status: 'ACTIVE' | 'DRAFT' | 'OUT_OF_STOCK';
   category?: { nameEn: string; nameAr: string; slugEn?: string | null } | null;
   images: Array<{ id: string; imageUrl: string; altText?: string | null; isPrimary?: boolean | null }>;
   variants: Array<{ id: string; stock?: number | null; price?: string | number | null; color?: string | null; size?: string | null }>;

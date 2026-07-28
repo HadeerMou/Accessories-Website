@@ -62,16 +62,34 @@ async function validateRelationsAndUniqueness(input: CreateProductInput | Update
   }
 }
 
-export async function listProducts(filters: ProductFilters) {
+export async function listAdminProducts(filters: ProductFilters) {
   const page = Number.isFinite(filters.page) && filters.page > 0 ? Math.floor(filters.page) : 1;
   const limit = Number.isFinite(filters.limit) && filters.limit > 0 ? Math.min(Math.floor(filters.limit), 50) : 10;
   const result = await repository.list({ ...filters, page, limit, category: clean(filters.category) ?? undefined, search: clean(filters.search) ?? undefined });
   return { ...result, page, limit, pages: Math.ceil(result.total / limit) };
 }
 
+//Store Products
+export async function listStoreProducts(filters: ProductFilters) {
+    return listAdminProducts({
+        ...filters,
+        status: ProductStatus.ACTIVE,
+    });
+}
+
 export async function getProduct(id: string) {
   const product = await repository.findById(id);
   if (!product) throw new HttpError(404, "Product not found");
+  return product;
+}
+
+export async function getStoreProduct(slug: string) {
+  const product = await repository.findStoreBySlug(slug);
+
+  if (!product) {
+    throw new HttpError(404, "Product not found");
+  }
+
   return product;
 }
 
@@ -120,5 +138,5 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
 
 export async function deleteProduct(id: string) {
   await getProduct(id);
-  return repository.archive(id);
+  return repository.softDelete(id);
 }

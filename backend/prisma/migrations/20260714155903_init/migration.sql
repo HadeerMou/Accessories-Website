@@ -2,7 +2,7 @@
 CREATE TYPE "user_role" AS ENUM ('ADMIN', 'CUSTOMER');
 
 -- CreateEnum
-CREATE TYPE "product_status" AS ENUM ('ACTIVE', 'DRAFT', 'OUT_OF_STOCK', 'ARCHIVED');
+CREATE TYPE "product_status" AS ENUM ('ACTIVE', 'DRAFT', 'OUT_OF_STOCK');
 
 -- CreateEnum
 CREATE TYPE "order_status" AS ENUM ('PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED');

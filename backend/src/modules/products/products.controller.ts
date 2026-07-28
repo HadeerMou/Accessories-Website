@@ -31,7 +31,7 @@ export async function listProducts(request: Request, response: Response, next: N
       throw new HttpError(400, "Invalid product status");
     }
 
-    const result = await productsService.listProducts({
+    const result = await productsService.listAdminProducts({
       page: Number(optionalQueryString(request.query.page, "page") ?? 1),
       limit: Number(optionalQueryString(request.query.limit, "limit") ?? 10),
       category: optionalQueryString(request.query.category, "category"),
@@ -81,6 +81,30 @@ export async function updateProduct(request: Request, response: Response, next: 
   } catch (error) {
     next(error);
   }
+}
+
+/** PATCH /api/products/:productId/status */
+export async function updateProductStatus(
+    request: Request,
+    response: Response,
+    next: NextFunction
+) {
+    try {
+        const { status } = requestBody<{ status: ProductStatus }>(request);
+
+        if (!Object.values(ProductStatus).includes(status)) {
+            throw new HttpError(400, "Invalid product status");
+        }
+
+        const product = await productsService.updateProduct(
+            routeProductId(request),
+            { status }
+        );
+
+        response.json({ data: product });
+    } catch (error) {
+        next(error);
+    }
 }
 
 /** DELETE /api/products/:productId */

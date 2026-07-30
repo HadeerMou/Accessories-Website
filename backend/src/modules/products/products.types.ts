@@ -1,6 +1,6 @@
 import type { ProductStatus } from "../../generated/prisma/enums.js";
 
-export interface ProductFilters { page: number; limit: number; category?: string; search?: string; status?: ProductStatus }
+export interface ProductFilters { page: number; limit: number; category?: string; search?: string; brand?: string; minPrice?: number; maxPrice?: number; sort?: | "newest" | "oldest" | "price_asc" | "price_desc"; status?: ProductStatus }
 export interface ProductImageInput { imageUrl: string; altText?: string | null; isPrimary?: boolean; sortOrder?: number }
 export interface ProductVariantInput { color?: string | null; size?: string | null; material?: string | null; stock?: number; price?: number | null; sku?: string | null }
 export interface CreateProductInput {

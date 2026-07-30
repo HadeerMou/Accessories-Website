@@ -10,36 +10,128 @@ export const productInclude = {
 } satisfies Prisma.ProductInclude;
 
 export class ProductRepository {
-  async list({ page, limit, category, search, status }: ProductFilters) {
+  private buildWhere({
+    category,
+    search,
+    status,
+  }: ProductFilters): Prisma.ProductWhereInput {
     const where: Prisma.ProductWhereInput = {
       deletedAt: null,
-      ...(status ? { status } : {}),
-      ...(category
-        ? { category: { is: { OR: [{ slugEn: category }, { slugAr: category }] } } }
-        : {}),
-      ...(search
-        ? {
-            OR: [
-              { nameEn: { contains: search, mode: "insensitive" } },
-              { nameAr: { contains: search, mode: "insensitive" } },
-              { sku: { contains: search, mode: "insensitive" } },
-            ],
-          }
-        : {}),
     };
+
+    // Filter by status
+    if (status) {
+      where.status = status;
+    }
+
+    // Filter by category
+    const categorySlug = category?.trim();
+    if (categorySlug) {
+      where.category = {
+        is: {
+          OR: [
+            { slugEn: categorySlug },
+            { slugAr: categorySlug },
+          ],
+        },
+      };
+    }
+
+    // Search
+    const query = search?.trim();
+
+    if (query) {
+      where.OR = [
+        {
+          nameEn: {
+            contains: query,
+            mode: "insensitive",
+          },
+        },
+        {
+          nameAr: {
+            contains: query,
+            mode: "insensitive",
+          },
+        },
+        {
+          descriptionEn: {
+            contains: query,
+            mode: "insensitive",
+          },
+        },
+        {
+          descriptionAr: {
+            contains: query,
+            mode: "insensitive",
+          },
+        },
+        {
+          sku: {
+            contains: query,
+            mode: "insensitive",
+          },
+        },
+        {
+          slugEn: {
+            contains: query,
+            mode: "insensitive",
+          },
+        },
+        {
+          slugAr: {
+            contains: query,
+            mode: "insensitive",
+          },
+        },
+        {
+          category: {
+            is: {
+              OR: [
+                {
+                  nameEn: {
+                    contains: query,
+                    mode: "insensitive",
+                  },
+                },
+                {
+                  nameAr: {
+                    contains: query,
+                    mode: "insensitive",
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ];
+    }
+
+    return where;
+  }
+
+  async list(filters: ProductFilters) {
+    const { page, limit } = filters;
+
+    const where = this.buildWhere(filters);
 
     const [data, total] = await Promise.all([
       prisma.product.findMany({
         where,
         include: productInclude,
-        orderBy: { createdAt: "desc" },
+        orderBy: {
+          createdAt: "desc",
+        },
         skip: (page - 1) * limit,
         take: limit,
       }),
       prisma.product.count({ where }),
     ]);
 
-    return { data, total };
+    return {
+      data,
+      total,
+    };
   }
 
   findById(id: string) {

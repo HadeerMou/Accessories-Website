@@ -22,7 +22,20 @@ Generate Prisma Client and create the database migration:
 ```bash
 npm run prisma:generate
 npm run prisma:migrate -- --name init
+
 ```
+
+# build images
+
+docker compose build
+
+# start services in background (build if needed)
+
+docker compose up -d --build
+
+# stop and remove containers
+
+docker compose down
 
 ## Development
 
@@ -51,10 +64,14 @@ npm run typecheck
 npm run build
 ```
 
+```admin seed
 
-``` admin seed
-
+# Seed only admin account
 npm run seed:admin --workspace backend
+npm run seed:backend:admin
 
+# Seed only categories and products
+npm run seed:products --workspace backend
+npm run seed:backend:products
 
 ```

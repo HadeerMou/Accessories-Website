@@ -3,9 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next build && next start",
-    "dev:watch": "next dev",
-    "dev:safe": "npm run dev",
+    "dev": "next dev",
+    "dev:safe": "next build && next start",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

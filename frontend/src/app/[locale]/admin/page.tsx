@@ -48,9 +48,7 @@ export default function AdminDashboard() {
     (review) =>
       review.product.nameEn.toLowerCase().includes(normalizedQuery) ||
       review.user.fullName.toLowerCase().includes(normalizedQuery) ||
-      Boolean(
-        review.comment?.toLowerCase().includes(normalizedQuery),
-      ),
+      Boolean(review.comment?.toLowerCase().includes(normalizedQuery)),
   );
 
   return (
@@ -65,15 +63,13 @@ export default function AdminDashboard() {
       />
 
       <div className="lg:pl-[248px]">
-       <AdminHeader
+        <AdminHeader
           query={dashboard.query}
           searchSuggestions={dashboard.searchSuggestions}
           isSearchDebouncing={dashboard.isSearchDebouncing}
           notifications={dashboard.notifications}
           notificationsOpen={dashboard.notificationsOpen}
-          onOpenNavigation={() =>
-            dashboard.setMobileNav(true)
-          }
+          onOpenNavigation={() => dashboard.setMobileNav(true)}
           onQueryChange={dashboard.setQuery}
           onSelectSearchSuggestion={(suggestion) => {
             dashboard.setSection(suggestion.section);
@@ -81,13 +77,9 @@ export default function AdminDashboard() {
             dashboard.setFilter("All");
           }}
           onToggleNotifications={() =>
-            dashboard.setNotificationsOpen(
-              (value) => !value,
-            )
+            dashboard.setNotificationsOpen((value) => !value)
           }
-          onCloseNotifications={() =>
-            dashboard.setNotificationsOpen(false)
-          }
+          onCloseNotifications={() => dashboard.setNotificationsOpen(false)}
           onNavigate={dashboard.setSection}
         />
 

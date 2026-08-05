@@ -12,7 +12,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "seed:admin": "npm run build && node dist/scripts/seed-admin.js"
+    "seed:admin": "npm run build && node dist/scripts/seed-admin.js",
+    "seed:products": "npm run build && node dist/scripts/seed-products.js"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

@@ -6,11 +6,7 @@ export type Section =
   | "Discounts"
   | "Reviews";
 
-export type OrderStatus =
-  | "Processing"
-  | "Shipped"
-  | "Delivered"
-  | "Cancelled";
+export type OrderStatus = "Processing" | "Shipped" | "Delivered" | "Cancelled";
 
 export type ProductStatus = "ACTIVE" | "DRAFT" | "OUT_OF_STOCK";
 
@@ -98,3 +94,13 @@ export type AdminProduct = {
   status: ProductStatus;
   tone: string;
 };
+
+export type SearchableAdminSection = "Products" | "Orders" | "Customers";
+
+export interface AdminSearchSuggestion {
+  id: string;
+  title: string;
+  subtitle: string;
+  section: SearchableAdminSection;
+  searchValue: string;
+}

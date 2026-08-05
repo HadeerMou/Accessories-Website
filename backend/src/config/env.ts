@@ -1,14 +1,23 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "node:path";
+
+dotenv.config({
+  path: path.resolve(import.meta.dirname, "../../../.env"),
+});
 
 const port = Number(process.env.PORT ?? 4000);
 const nodeEnv = process.env.NODE_ENV ?? "development";
-const authSecret = process.env.AUTH_SECRET?.trim() || "development-only-change-this-secret";
+const authSecret =
+  process.env.AUTH_SECRET?.trim() || "development-only-change-this-secret";
 
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("PORT must be a valid TCP port number");
 }
 
-if (nodeEnv === "production" && authSecret === "development-only-change-this-secret") {
+if (
+  nodeEnv === "production" &&
+  authSecret === "development-only-change-this-secret"
+) {
   throw new Error("AUTH_SECRET is required in production");
 }
 
@@ -26,6 +35,7 @@ export const env = {
     user: process.env.SMTP_USER?.trim(),
     pass: process.env.SMTP_PASS,
     from: process.env.SMTP_FROM?.trim() || "Aura Store <orders@aura.local>",
-    adminEmail: process.env.ORDER_ADMIN_EMAIL?.trim() || process.env.ADMIN_EMAIL?.trim(),
+    adminEmail:
+      process.env.ORDER_ADMIN_EMAIL?.trim() || process.env.ADMIN_EMAIL?.trim(),
   },
 };

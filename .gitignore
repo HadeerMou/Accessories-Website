@@ -36,7 +36,6 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
-!/backend/.env.example
 
 # vercel
 .vercel
@@ -47,3 +46,8 @@ next-env.d.ts
 
 # generated Prisma client
 /backend/src/generated/prisma/
+
+# README FOR ME FILE
+README_FOR_ME.md
+readme_for_me
+.readme_for_me

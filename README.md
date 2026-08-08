@@ -1,77 +1,102 @@
 # Accessories Web
 
-An npm-workspace project with a Next.js storefront and a separate Express API.
+A headless e-commerce demo built as a monorepo with a Next.js storefront and an Express API backed by Prisma and PostgreSQL.
 
-## Structure
+## Overview
 
-```text
-frontend/   Next.js 16 storefront
-backend/    Express 5 API and Prisma ORM
-```
+- `frontend/` — Next.js 16 storefront with React 19 and internationalization support.
+- `backend/` — Express 5 API using Prisma ORM and PostgreSQL.
+- `docker-compose.yml` — optional local development environment with Postgres, backend, frontend, and Adminer.
 
-## Setup
+## Features
+
+- Storefront product listing and cart flow
+- API routes for products, categories, orders, reviews, payments, and auth
+- Prisma schema and migrations for PostgreSQL
+- Local Docker development support
+
+## Requirements
+
+- Node.js 20+ / npm
+- PostgreSQL
+- Optional: Docker and Docker Compose for containerized development
+
+## Getting Started
+
+1. Install dependencies from the repository root:
 
 ```bash
 npm install
 ```
 
-Copy `backend/.env.example` to `backend/.env` and update `DATABASE_URL` for your PostgreSQL database. A local development template is already present and ignored by Git.
+2. Create `backend/.env` locally with your database connection and mail settings.
 
-Generate Prisma Client and create the database migration:
+3. Generate Prisma client and apply database migrations:
 
 ```bash
 npm run prisma:generate
 npm run prisma:migrate -- --name init
-
 ```
-
-# build images
-
-docker compose build
-
-# start services in background (build if needed)
-
-docker compose up -d --build
-
-# stop and remove containers
-
-docker compose down
 
 ## Development
 
-Run the frontend at `http://localhost:3000`:
+Start the frontend and backend in development mode from the repository root:
 
 ```bash
 npm run dev
 ```
 
-Run the backend at `http://localhost:4000` in another terminal:
+Alternatively, run each workspace separately:
 
 ```bash
+npm run dev:frontend
 npm run dev:backend
 ```
 
-The initial API endpoints are:
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:4000`
+
+## Docker
+
+Build and start the full stack with Docker Compose:
+
+```bash
+docker compose build
+docker compose up -d --build
+```
+
+Stop and remove containers:
+
+```bash
+docker compose down
+```
+
+## Useful Scripts
+
+- `npm run build` — Build all workspaces
+- `npm run lint` — Run workspace linting
+- `npm run typecheck` — Run TypeScript type checks
+- `npm run prisma:generate` — Generate Prisma client for backend
+- `npm run prisma:migrate` — Run Prisma migrations for backend
+- `npm run prisma:studio` — Launch Prisma Studio
+- `npm run seed:backend:admin` — Seed admin account
+- `npm run seed:backend:products` — Seed demo categories and products
+
+## API
+
+The backend exposes REST-style API routes under `/api`. Example endpoints:
 
 - `GET /api/health`
 - `GET /api/products`
 
-## Checks
+## Repository Layout
 
-```bash
-npm run lint
-npm run typecheck
-npm run build
+```text
+frontend/   Next.js storefront
+backend/    Express API, Prisma schema, migrations, and seed scripts
 ```
 
-```admin seed
+## Notes
 
-# Seed only admin account
-npm run seed:admin --workspace backend
-npm run seed:backend:admin
-
-# Seed only categories and products
-npm run seed:products --workspace backend
-npm run seed:backend:products
-
-```
+- Keep sensitive values out of version control by updating `backend/.env` locally.
+- This README is intended for public consumption and does not include private or local-only notes.

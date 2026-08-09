@@ -57,6 +57,26 @@
     "privacy": "Privacy Policy",
     "terms": "Terms of Service"
   },
+  "Privacy": {
+    "title": "Privacy Policy",
+    "intro": "Aura Accessories is committed to protecting your privacy and keeping your personal data secure.",
+    "dataCollectionTitle": "Data Collection",
+    "dataCollectionText": "We collect only the information needed to process orders, manage accounts, and improve your shopping experience.",
+    "dataUseTitle": "How We Use Data",
+    "dataUseText": "Your information is used for order fulfillment, customer support, and to send you updates when you opt in.",
+    "yourRightsTitle": "Your Rights",
+    "yourRightsText": "You can access, update, or request deletion of your personal data by contacting our support team."
+  },
+  "Terms": {
+    "title": "Terms of Service",
+    "intro": "These terms govern your use of Aura Accessories and your purchase of products from our site.",
+    "useTitle": "Acceptable Use",
+    "useText": "You agree to use our website responsibly and not to engage in fraudulent or abusive behavior.",
+    "ordersTitle": "Orders",
+    "ordersText": "All orders are subject to product availability and order verification. We reserve the right to cancel or refuse any order.",
+    "liabilityTitle": "Liability",
+    "liabilityText": "Aura Accessories is not responsible for indirect or consequential damages arising from your use of the site or purchase of products."
+  },
   "Catalog": {
     "womenTitle": "Women's Collection",
     "womenCategory": "Women's",

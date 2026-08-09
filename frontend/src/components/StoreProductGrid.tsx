@@ -149,7 +149,7 @@ export default function StoreProductGrid({
           ))}
         </div>
       )}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {visible.map((product) => {
           const image =
             product.images.find((i) => i.isPrimary) ?? product.images[0];
@@ -157,7 +157,7 @@ export default function StoreProductGrid({
           const price = Number(product.discountPrice ?? product.price);
           const isFavorite = wishlistIds.includes(product.id);
           return (
-            <article key={product.id} className="group mb-7">
+            <article key={product.id} className="group mb-5">
               <div className="relative mb-4 aspect-[4/5] overflow-hidden bg-[#e8e2d8]">
                 <Link
                   href={`/${locale}/product/${product.id}`}
